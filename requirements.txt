@@ -1,0 +1,14 @@
+statsmodels
+numpy
+pandas
+netCDF4
+scipy
+pydap
+bottleneck==1.0.0
+cyordereddict
+matplotlib
+basemap
+eof2
+dask
+xarray
+
