@@ -7,9 +7,11 @@
 
 ## Usage
 Generate QBO orthogonal regressors via `eofs_univ_ccmi_xarray.py` script, e.g.:
+
 `python eofs_univ_ccmi_xarray.py -v jra55 u 1960 1960 2009 jra55_uwnd_1960_2009_zm.nc`
 
 When all regressors available, attribution by MLR to particular phehomena can be done  via `lin_reg_univ_ccmi_xarray.py` script, e.g.:
+
 `python lin_reg_univ_ccmi_xarray.py -v jra55 t 1960 1979 2005 jra55_tmp_1960_2009_zm.nc all_trend`
 
 
