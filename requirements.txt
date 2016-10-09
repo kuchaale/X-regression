@@ -8,7 +8,7 @@ bottleneck==1.0.0
 cyordereddict
 matplotlib
 basemap
-eof2
+eofs
 dask
 xarray
 
