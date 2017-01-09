@@ -9,8 +9,11 @@ import time
 import platform
 import statsmodels.api as sm
 import statsmodels.stats.stattools as sms
+import matplotlib as mpl
+import matplotlib.pyplot as pl
 
-pripona_nc = '.nc'
+suffix_pdf = '.pdf'
+suffix_nc = '.nc
 periods=['','_01_jan','_02_feb','_03_mar','_04_apr','_05_may','_06_jun','_07_jul','_08_aug','_09_sep','_10_oct','_11_nov','_12_dec','_win', '_spr', '_sum', '_aut']
 bool_str = ['true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh']
 
@@ -140,7 +143,7 @@ def main(args):
     cu_ds = cu_ds.merge(cod_ds)
     cu_ds = cu_ds.merge(dwt_ds)
     
-    if nc_gen in bool_str:
+    if nc_gen:
         print('netCDF Output')
         cu_ds.coefs.attrs['long_name'] = 'Regression coefficients'
         cu_ds.cod.attrs['long_name'] = 'Coefficient of determination'
@@ -149,15 +152,16 @@ def main(args):
         #cu_ds.coords[lev_name].attr['units'] = 'hPa'
         cu_ds.attrs['history'] = 'Regressors included: '+history
         cu_ds.attrs['description'] = 'Created ' + time.ctime(time.time()) 
-        cu_ds.to_netcdf(out_dir+'test2'+pripona_nc)
+        cu_ds.to_netcdf(out_dir+'stat_outputs'+suffix_nc)
     
 
-    if pdf_gen in bool_str:
+    if pdf_gen:
         print('solar RC visualization')
         my_cmap = mpl.colors.ListedColormap(['yellow', 'red', 'white'])
         coefs_unstacked.sel(stat_var = 'p_values', regs = 'solar').squeeze().plot.contourf(yincrease=False, levels = [0,0.01,0.05], cmap=my_cmap)
         coefs_unstacked.sel(stat_var = 'coefs', regs = 'solar').squeeze().plot.contour(yincrease=False, colors='k', add_colorbar=False, levels = [-1,-0.5, -0.2,-0.1,0,0.1,0.2, 0.5,1])
         plt.yscale('log')
+        plt.savefig(out_dir+'visualization'+suffix_pdf, bbox_inches = 'tight')
 
 if __name__ == "__main__":
     start = time.time()
