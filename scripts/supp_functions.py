@@ -242,22 +242,36 @@ def normalize(data, norm, down_bound = -1., upper_bound = 1.):
     elif norm == 7:	
 	data = data - runningMeanFast(data,6)
     return np.array(data)
-	
+
+def normalize_xr(data, norm, down_bound = -1., upper_bound = 1.):
+    avg = data.mean('time')
+    sd = data.std('time')
+    if norm == 0:
+        data = data
+    elif norm == 1:
+        data = (data-avg)/sd                                                               
+    elif norm == 2:                                                                        
+        data = (data-avg)/avg
+    elif norm == 3:
+        data = data/avg
+    elif norm == 4:
+        data = data/sd
+    elif norm == 5:                                                                        
+        dh = data.max()
+        dl = data.min()
+        #print dl                                                                          
+        data = (((data-dl)*(upper_bound-down_bound))/(dh-dl))+down_bound
+        #print data
+    elif norm == 6:                                                                        
+        data = data-avg
+
+    return data	
 
 def open_reg_ccmi(in_file, var, norm, i_year, s_year, e_year, filt_years = None):
-    data_file = Dataset(in_file, 'r')
-    data = data_file.variables[var][:]
-    data_file.close()
-
-    ndata = data.shape[0]
-    first = data[0]
-    last = data[ndata-1]    
-    
-
-    data = normalize(data, norm)
+    ds = xr.open_dataset(in_file, decode_times=False)
+    data_xr = normalize_xr(ds[var], norm)
     s_mon = 1
-    e_mon = 12
-    #print type(data)
+    e_mon = 12    
     data = date_range_xr(data, i_year, s_year, e_year, s_mon, e_mon, filt_years = filt_years)
     return data
 
