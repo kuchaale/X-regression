@@ -85,24 +85,24 @@ def get_coords(ds, l_name):
 def get_coords_name(ds, l_name):
     return [k for k, v in ds.coords.iteritems() if 'standard_name' in v.attrs.keys() and l_name in v.standard_name][0]
 
-def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year):
+def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, filt_years = filt_years):
     reg_dir = ''#os.environ['reg_dir']
     print reg_dir
-    qbo1 = open_reg_ccmi(reg_dir+'qbo_'+what_re+what_sp+'_pc1.nc', 'index', norm, i_year, s_year, e_year)
+    qbo1 = open_reg_ccmi(reg_dir+'qbo_'+what_re+what_sp+'_pc1.nc', 'index', norm, i_year, s_year, e_year, filt_years = filt_years)
     n = qbo1.shape[0]
-    qbo2 = open_reg_ccmi(reg_dir+'qbo_'+what_re+what_sp+'_pc2.nc', 'index', norm, i_year, s_year, e_year)
-    solar = open_reg_ccmi(reg_dir+'solar_1947.nc', 'solar', 0, 1947, s_year, e_year)
+    qbo2 = open_reg_ccmi(reg_dir+'qbo_'+what_re+what_sp+'_pc2.nc', 'index', norm, i_year, s_year, e_year, filt_years = filt_years)
+    solar = open_reg_ccmi(reg_dir+'solar_1947.nc', 'solar', 0, 1947, s_year, e_year, filt_years = filt_years)
     solar /= 126.6 # normalization on Smax - Smin sfu
     what_re2 = 'HadISST'
     i_year2 = 1947
     e_year2 = 2009
-    enso = open_reg_ccmi(reg_dir+'enso_'+what_re2+'_monthly_'+str(i_year2)+'_'+str(e_year2)+'.nc', 'enso', norm, i_year2, s_year, e_year)
+    enso = open_reg_ccmi(reg_dir+'enso_'+what_re2+'_monthly_'+str(i_year2)+'_'+str(e_year2)+'.nc', 'enso', norm, i_year2, s_year, e_year, filt_years = filt_years)
     if what_re in ['20CR','era-40','ncep1','m_iau','era_interim_mplev']: #'jra55',
-        saod = open_reg_ccmi(reg_dir+'saod_1960_2013.nc', 'saod', norm, 1960, s_year, e_year)
+        saod = open_reg_ccmi(reg_dir+'saod_1960_2013.nc', 'saod', norm, 1960, s_year, e_year, filt_years = filt_years)
     else:
-        saod = open_reg_ccmi(reg_dir+'sad_gm_50hPa_1949_2013.nc', 'sad', 0, 1949, s_year, e_year)
+        saod = open_reg_ccmi(reg_dir+'sad_gm_50hPa_1949_2013.nc', 'sad', 0, 1949, s_year, e_year, filt_years = filt_years)
     #if vari in ['O3'] and s_year >= 1979 and conf_str[:7] != '2trends':
-    #eesc = open_reg_ccmi(reg_dir+'eesc.nc', 'eesc', norm, 1979, s_year, e_year)
+    #eesc = open_reg_ccmi(reg_dir+'eesc.nc', 'eesc', norm, 1979, s_year, e_year, filt_years = filt_years)
     trend = np.linspace(-1, 1, n)
 
     #elif vari == 'x':
@@ -205,6 +205,16 @@ def date_range_ccmi(arr, s_year_data, s_year, e_year, s_mon, e_mon):
 
     return res
 
+def date_range_xr(arr, s_year_data, n, s_year, e_year, s_mon, e_mon, filt_years = None):
+    times = pd.date_range(start=str(s_year_data), periods=n, freq=pd.tseries.offsets.DateOffset(months=1))
+    #print(arr)
+    arr['time'] = times
+    tr = pd.date_range(start=str(s_year)+'-'+str(s_mon), end = str(e_year)+'-'+str(e_mon), freq=pd.tseries.offsets.DateOffset(months=1))
+    if filt_years != None:
+        tr = filter(lambda x: x.year not in filt_years, tr)
+    arr = arr.sel(time = pd.to_datetime(tr))
+    return arr
+
 def normalize(data, norm, down_bound = -1., upper_bound = 1.):
     avg = np.nanmean(data)
     sd = np.nanstd(data)
@@ -234,7 +244,7 @@ def normalize(data, norm, down_bound = -1., upper_bound = 1.):
     return np.array(data)
 	
 
-def open_reg_ccmi(in_file, var, norm, i_year, s_year, e_year):
+def open_reg_ccmi(in_file, var, norm, i_year, s_year, e_year, filt_years = None):
     data_file = Dataset(in_file, 'r')
     data = data_file.variables[var][:]
     data_file.close()
@@ -248,7 +258,7 @@ def open_reg_ccmi(in_file, var, norm, i_year, s_year, e_year):
     s_mon = 1
     e_mon = 12
     #print type(data)
-    data = date_range_ccmi(data, i_year, s_year, e_year, s_mon, e_mon)
+    data = date_range_xr(data, i_year, s_year, e_year, s_mon, e_mon, filt_years = filt_years)
     return data
 
 if __name__ == '__main__':
