@@ -85,7 +85,7 @@ def get_coords(ds, l_name):
 def get_coords_name(ds, l_name):
     return [k for k, v in ds.coords.iteritems() if 'standard_name' in v.attrs.keys() and l_name in v.standard_name][0]
 
-def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, filt_years = filt_years):
+def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, filt_years = None):
     reg_dir = ''#os.environ['reg_dir']
     print reg_dir
     qbo1 = open_reg_ccmi(reg_dir+'qbo_'+what_re+what_sp+'_pc1.nc', 'index', norm, i_year, s_year, e_year, filt_years = filt_years)
