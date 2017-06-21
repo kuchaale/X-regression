@@ -10,10 +10,10 @@ import platform
 import statsmodels.api as sm
 import statsmodels.stats.stattools as sms
 import matplotlib as mpl
-import matplotlib.pyplot as pl
+import matplotlib.pyplot as plt
 
 suffix_pdf = '.pdf'
-suffix_nc = '.nc
+suffix_nc = '.nc'
 periods=['','_01_jan','_02_feb','_03_mar','_04_apr','_05_may','_06_jun','_07_jul','_08_aug','_09_sep','_10_oct','_11_nov','_12_dec','_win', '_spr', '_sum', '_aut']
 bool_str = ['true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh']
 
