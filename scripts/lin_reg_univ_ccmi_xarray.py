@@ -30,9 +30,9 @@ def main(args):
     #environmental constants  
     if platform.system() == 'Windows':
         n_samples=5000
-        in_dir=''
+        in_dir='../examples/'
         out_dir=''
-        reg_dir=''#${in_dir}'regresory_2013/'
+        reg_dir='../regressors/'#${in_dir}'regresory_2013/'
         pdf_gen=True
         nc_gen=True
     else:
@@ -181,7 +181,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     main(args)
-    print(time.time()-start)
+    print('{} seconds elapsed'.format(time.time()-start))
     print('done')
 
 

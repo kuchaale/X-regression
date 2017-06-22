@@ -4,7 +4,9 @@ from time import time, ctime
 import os
 import calendar
 import statsmodels.api as sm
-
+import xarray as xr
+import pandas as pd
+import sys
 
 def deseasonalize(ds, how = 'absolute'):
     time_var = get_coords_name(ds, 'time')
@@ -86,12 +88,13 @@ def get_coords_name(ds, l_name):
     return [k for k, v in ds.coords.iteritems() if 'standard_name' in v.attrs.keys() and l_name in v.standard_name][0]
 
 def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, filt_years = None):
-    reg_dir = ''#os.environ['reg_dir']
-    print reg_dir
-    qbo1 = open_reg_ccmi(reg_dir+'qbo_'+what_re+what_sp+'_pc1.nc', 'index', norm, i_year, s_year, e_year, filt_years = filt_years)
-    n = qbo1.shape[0]
-    qbo2 = open_reg_ccmi(reg_dir+'qbo_'+what_re+what_sp+'_pc2.nc', 'index', norm, i_year, s_year, e_year, filt_years = filt_years)
+    reg_dir = '../regressors/'#os.environ['reg_dir']
+    print(reg_dir)
+    if conf != 'no_qbo':
+        qbo1 = open_reg_ccmi(reg_dir+'qbo_'+what_re+what_sp+'_pc1.nc', 'index', norm, i_year, s_year, e_year, filt_years = filt_years)
+        qbo2 = open_reg_ccmi(reg_dir+'qbo_'+what_re+what_sp+'_pc2.nc', 'index', norm, i_year, s_year, e_year, filt_years = filt_years)
     solar = open_reg_ccmi(reg_dir+'solar_1947.nc', 'solar', 0, 1947, s_year, e_year, filt_years = filt_years)
+    n = solar.shape[0]
     solar /= 126.6 # normalization on Smax - Smin sfu
     what_re2 = 'HadISST'
     i_year2 = 1947
@@ -166,6 +169,14 @@ def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, fil
 	my_xticks = ['eesc', 'solar', 'qbo1', 'qbo2']
 	#outdir += '/rel_impact/LIN_REG/'
 	history =  ", ".join(my_xticks)
+    elif conf == 'no_qbo':                     
+        reg = np.column_stack((trend, solar, enso, saod)) 
+	my_xticks = ['trend', 'solar', 'enso', 'saod']
+	#outdir += '/rel_impact/LIN_REG/'
+	history =  ", ".join(my_xticks)
+    else:
+        print('particular configuration does not exist')
+        sys.exit()
 
     return reg, my_xticks, history
 
@@ -205,7 +216,7 @@ def date_range_ccmi(arr, s_year_data, s_year, e_year, s_mon, e_mon):
 
     return res
 
-def date_range_xr(arr, s_year_data, n, s_year, e_year, s_mon, e_mon, filt_years = None):
+def date_range_xr(arr, s_year_data, s_year, e_year, s_mon, e_mon, n, filt_years = None):
     times = pd.date_range(start=str(s_year_data), periods=n, freq=pd.tseries.offsets.DateOffset(months=1))
     #print(arr)
     arr['time'] = times
@@ -272,7 +283,8 @@ def open_reg_ccmi(in_file, var, norm, i_year, s_year, e_year, filt_years = None)
     data_xr = normalize_xr(ds[var], norm)
     s_mon = 1
     e_mon = 12    
-    data = date_range_xr(data, i_year, s_year, e_year, s_mon, e_mon, filt_years = filt_years)
+    n = data_xr.time.shape[0]
+    data = date_range_xr(data_xr, i_year, s_year, e_year, s_mon, e_mon, n, filt_years = filt_years)
     return data
 
 if __name__ == '__main__':

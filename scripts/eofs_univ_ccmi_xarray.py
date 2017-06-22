@@ -23,11 +23,11 @@ def xr_regression(y):
 def main(args):
     #environmental constants  
     if platform.system() == 'Windows':
-        in_dir=''
-        out_dir=''
-        reg_dir=''#${in_dir}'regresory_2013/'
+        in_dir='../examples/'
+        out_dir='../regressors/'
+        reg_dir='../regressors/'#${in_dir}'regresory_2013/'
         nc_gen=True
-        pdf_gen=True
+        pdf_gen=False
         plus = ''
     else:
         n_samples = int(os.environ['n_samples'])
@@ -102,7 +102,7 @@ def main(args):
     what_sp = '' # what solar proxy?
 
     print("regressors' openning")
-    global reg, reg_names, nr
+    global reg#, reg_names, nr
     reg, reg_names, history = fce.configuration_ccmi(what_re, what_sp, norm, 'no_qbo' , i_year, s_year, e_year)
     nr = reg.shape[1]
 
@@ -150,8 +150,10 @@ def main(args):
                 
     if nc_gen:
         #save to netcdf
-        pcs_ds = pcs.to_dataset(name = 'qbo')
-        pcs_ds.to_netcdf(out_dir+'qbo_'+what_re+'_pcas'+pripona_nc)       
+        #print(pcs[:,0])
+        for i in xrange(npca):
+            pcs_ds = pcs[:,i].to_dataset(name = 'index')
+            pcs_ds.to_netcdf(out_dir+'qbo_'+what_re+'_pc'+str(i+1)+pripona_nc)       
 
 if __name__ == "__main__":
     #inputs
