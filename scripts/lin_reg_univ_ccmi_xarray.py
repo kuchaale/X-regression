@@ -9,8 +9,10 @@ import time
 import platform
 import statsmodels.api as sm
 import statsmodels.stats.stattools as sms
+import matplotlib; matplotlib.use('Qt4Agg')
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+
 
 suffix_pdf = '.pdf'
 suffix_nc = '.nc'
@@ -157,11 +159,15 @@ def main(args):
 
     if pdf_gen:
         print('solar RC visualization')
+        fig, ax = plt.subplots(figsize=(12,9))
         my_cmap = mpl.colors.ListedColormap(['yellow', 'red', 'white'])
-        coefs_unstacked.sel(stat_var = 'p_values', regs = 'solar').squeeze().plot.contourf(yincrease=False, levels = [0,0.01,0.05], cmap=my_cmap)
-        coefs_unstacked.sel(stat_var = 'coefs', regs = 'solar').squeeze().plot.contour(yincrease=False, colors='k', add_colorbar=False, levels = [-1,-0.5, -0.2,-0.1,0,0.1,0.2, 0.5,1])
-        plt.yscale('log')
+        coefs_unstacked.sel(stat_var = 'p_values', regs = 'solar').squeeze().plot.contourf(yincrease=False, levels = [0,0.01,0.05], cmap=my_cmap, ax = ax)
+        coefs_unstacked.sel(stat_var = 'coefs', regs = 'solar').squeeze().plot.contour(yincrease=False, colors='k', add_colorbar=False, levels = [-1,-0.5, -0.2,-0.1,0,0.1,0.2, 0.5,1], ax = ax)
+        ax.set_yscale('log')
+        ax.set_ylabel('pressure [hPa')
+        ax.set_xlabel('latitude [deg]')
         plt.savefig(out_dir+'visualization'+suffix_pdf, bbox_inches = 'tight')
+        plt.close(fig)
 
 if __name__ == "__main__":
     start = time.time()
