@@ -7,7 +7,6 @@ pydap
 bottleneck==1.0.0
 cyordereddict
 matplotlib
-basemap
 eofs
 dask
 xarray
