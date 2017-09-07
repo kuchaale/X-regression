@@ -10,6 +10,7 @@ import xarray as xr
 import pandas as pd
 import argparse
 import platform
+import os
 
 pripona_nc = '.nc'
 
