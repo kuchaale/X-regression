@@ -104,9 +104,13 @@ def main(args):
 
     n = ds.coords['time'].shape[0]
 
-    lon_name = fce.get_coords_name(ds, 'longitude')
-    lon = ds.coords[lon_name].values
-    nlon = lon.shape[0]
+    #it may happen that the field is 3D (longitude is missing)
+    try:
+        lon_name = fce.get_coords_name(ds, 'longitude')
+        lon = ds.coords[lon_name].values
+        nlon = lon.shape[0]
+    except:
+        nlon = 1
 
     if nlon != 1:
         ds = ds.mean(lon_name)
@@ -135,7 +139,7 @@ def main(args):
 
     #stacked = stacked.reset_coords(drop=True)
     coefs = stacked.groupby('allpoints').apply(xr_regression)
-    coefs['allpoints'] = stacked.coords['allpoints']
+    coefs['allpoints']  = stacked.coords['allpoints'].sortby(lev_name) # I need to sort allpoints multiindex according to lev, otherwise I would get reversedcoefs   
     coefs_unstacked = coefs.unstack('allpoints')
     print('output processing')
     cu_ds = coefs_unstacked.to_dataset(dim = 'stat_var')
