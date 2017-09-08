@@ -81,7 +81,16 @@ def main(args):
         print('regression configuration: ', conf_str)
         #print('Zonal, whole or map? ', zonal_b)
    
-    
+
+    if conf_str[-2:] == 'el':
+        filt_years = [1982,1983,1984]
+    elif conf_str[-2:] == 'pi':
+        filt_years = [1991,1992,1993]
+    elif conf_str[-2:] == 'bo':
+        filt_years = [1982,1983,1984,1991,1992,1993]
+    else:
+        filt_years = None
+        
     print('data opening')
     in_netcdf = in_dir + in_file_name 
     #ds = xr.open_mfdataset(in_netcdf, concat_dim = 'ens')
@@ -117,13 +126,13 @@ def main(args):
 
     print("regressors' openning")
     global reg, reg_names, nr
-    reg, reg_names, history = fce.configuration_ccmi(what_re, what_sp, norm, conf_str, i_year, s_year, e_year)
+    reg, reg_names, history = fce.configuration_ccmi(what_re, what_sp, norm, conf_str[:-3], i_year, s_year, e_year, filt_years = filt_years)
     X = reg[:,:] 
     nr = X.shape[1]
 
     #select date range and variable
-    times = pd.date_range(str(s_year)+'-01-01', str(e_year)+'-12-31', name='time', freq = 'M')
-    ds_sel = ds.sel(time = times, method='ffill') #nearest #[vari]
+    #times = pd.date_range(str(s_year)+'-01-01', str(e_year)+'-12-31', name='time', freq = 'M')
+    ds_sel = fce.date_range_xr(ds, i_year, s_year, e_year, 1, 12, n, filt_years = filt_years)#ds.sel(time = times, method='ffill') #nearest #[vari]
 
     print('anomalies calculation')
     anomalies, _ = fce.deseasonalize(ds_sel)
@@ -195,6 +204,7 @@ def main(args):
         ax.set_yscale('log')
         ax.set_ylabel('pressure [hPa')
         ax.set_xlabel('latitude [deg]')
+        ax.set_ylim(1000,0.1)
         plt.savefig(out_dir+'visualization'+suffix_pdf, bbox_inches = 'tight')
         plt.close(fig)
 
@@ -210,7 +220,9 @@ if __name__ == "__main__":
     parser.add_argument("s_year", help="initial year of analysis", type=int)
     parser.add_argument("e_year", help="end year of analysi", type=int)
     parser.add_argument("in_file_name", help="input filename")
-    parser.add_argument("config", help="regression configuration", choices=['all_trend','all_2trends','all_eesc', 'no_ssaod_trend', 'no_saod_2trends', 'no_saod_eesc', 'no_saod_enso_trend', 'no_saod_enso_2trends', 'no_saod_enso_eesc'])
+    choices_def = ['all_trend','all_2trends','all_eesc', 'no_saod_trend', 'no_saod_2trends', 'no_saod_eesc', 'no_saod_enso_trend', 'no_saod_enso_2trends', 'no_saod_enso_eesc']
+    choices = choices_def + [i+'_bo' for i in choices_def] + [i+'_pi' for i in choices_def] + [i+'_el' for i in choices_def]
+    parser.add_argument("config", help="regression configuration", choices=choices)
     #parser.add_argument("zonal_config", help="Zonal, whole or map?")   
 
 

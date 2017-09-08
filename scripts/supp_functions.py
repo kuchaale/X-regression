@@ -13,7 +13,7 @@ def rev_sign(ls):
     return map(lambda x: x*-1, ls)[::-1]
 
 def deseasonalize(ds, how = 'absolute'):
-    time_var = get_coords_name(ds, 'time')
+    time_var = 'time' #get_coords_name(ds, 'time')
     climatology = ds.groupby(time_var+'.month').mean(time_var)#.median(time_var) does not work
     anomalies = ds.copy()
     for key in ds.data_vars.keys():
@@ -104,7 +104,7 @@ def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, fil
     i_year2 = 1947
     e_year2 = 2009
     enso = open_reg_ccmi(reg_dir+'enso_'+what_re2+'_monthly_'+str(i_year2)+'_'+str(e_year2)+'.nc', 'enso', norm, i_year2, s_year, e_year, filt_years = filt_years)
-    if what_re in ['20CR','era-40','ncep1','m_iau','era_interim_mplev']: #'jra55',
+    if what_re.lower() in ['20CR','era-40','ncep1','m_iau','era_interim_mplev']:#, 'era-i', 'merra', 'merra2', 'jra-55']: #'jra55',
         saod = open_reg_ccmi(reg_dir+'saod_1960_2013.nc', 'saod', norm, 1960, s_year, e_year, filt_years = filt_years)
     else:
         saod = open_reg_ccmi(reg_dir+'sad_gm_50hPa_1949_2013.nc', 'sad', 0, 1949, s_year, e_year, filt_years = filt_years)
@@ -222,12 +222,16 @@ def date_range_ccmi(arr, s_year_data, s_year, e_year, s_mon, e_mon):
 
 def date_range_xr(arr, s_year_data, s_year, e_year, s_mon, e_mon, n, filt_years = None):
     times = pd.date_range(start=str(s_year_data), periods=n, freq=pd.tseries.offsets.DateOffset(months=1))
-    #print(arr)
-    arr['time'] = times
+    #print(arr.coords['time'])
+    #sys.exit()
+    arr['time'] = times.values
     tr = pd.date_range(start=str(s_year)+'-'+str(s_mon), end = str(e_year)+'-'+str(e_mon), freq=pd.tseries.offsets.DateOffset(months=1))
     if filt_years != None:
         tr = filter(lambda x: x.year not in filt_years, tr)
-    arr = arr.sel(time = pd.to_datetime(tr), method='ffill')
+    #print(tr)
+    #print(arr.sel(time = tr, method = 'ffill'))
+    #sys.exit()
+    arr = arr.sel(time = tr, method='ffill')
     return arr
 
 def normalize(data, norm, down_bound = -1., upper_bound = 1.):
