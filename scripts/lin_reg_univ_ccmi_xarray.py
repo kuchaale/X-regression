@@ -1,3 +1,5 @@
+import matplotlib                                                       
+matplotlib.use('Agg')
 import numpy as np
 import supp_functions as fce
 import sys
@@ -9,13 +11,10 @@ import time
 import platform
 import statsmodels.api as sm
 import statsmodels.stats.stattools as sms
-import matplotlib; matplotlib.use('Qt4Agg')
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
-suffix_pdf = '.pdf'
-suffix_nc = '.nc'
 periods=['','_01_jan','_02_feb','_03_mar','_04_apr','_05_may','_06_jun','_07_jul','_08_aug','_09_sep','_10_oct','_11_nov','_12_dec','_win', '_spr', '_sum', '_aut']
 bool_str = ['true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh']
 
@@ -23,10 +22,15 @@ def xr_regression(y):
     X = sm.add_constant(reg, prepend=True) # regressor matrix
     #nr = reg.shape[1]
     #print(y)
-    mod = sm.GLSAR(y.values, X, 2, missing = 'drop') # MLR analysis with AR2 modeling
-    res = mod.iterative_fit() 
+    try:
+        mod = sm.GLSAR(y.values, X, 2, missing = 'drop') # MLR analysis with AR2 modeling
+        res = mod.iterative_fit() 
+        output = xr.DataArray([res.params[1:], res.pvalues[1:], [sms.durbin_watson(res.wresid)]*nr, [res.rsquared]*nr], coords=[['coefs', 'p_values', 'dwt', 'cod'], reg_names], dims=['stat_var', 'regs'])
+    except: 
+        nans = np.full([nr], np.nan)
+        output = xr.DataArray([nans, nans, nans, nans], coords=[['coefs', 'p_values', 'dwt', 'cod'], reg_names], dims=['stat_var', 'regs'])
 
-    return xr.DataArray([res.params[1:], res.pvalues[1:], [sms.durbin_watson(res.wresid)]*nr, [res.rsquared]*nr], coords=[['coefs', 'p_values', 'dwt', 'cod'], reg_names], dims=['stat_var', 'regs'])
+    return output
 
 def main(args):
     #environmental constants  
@@ -59,6 +63,9 @@ def main(args):
     e_year = args.e_year
     in_file_name = args.in_file_name
     conf_str = args.config
+    suffix_pdf = '_{}-{}_{}.pdf'.format(s_year, e_year, conf_str)
+    suffix_nc = '_{}-{}_{}.nc'.format(s_year, e_year, conf_str)
+    
     #zonal_b = args.zonal_config
     
 
@@ -91,7 +98,7 @@ def main(args):
         ds[lev_name] = lev    
     else:
         lev = ds.coords[lev_name].values
-
+    #print(lev) 
     nlev = lev.shape[0]
     gen = np.arange(nlev)
 
@@ -100,6 +107,9 @@ def main(args):
     lon_name = fce.get_coords_name(ds, 'longitude')
     lon = ds.coords[lon_name].values
     nlon = lon.shape[0]
+
+    if nlon != 1:
+        ds = ds.mean(lon_name)
 
     print("regressors' openning")
     global reg, reg_names, nr
@@ -119,16 +129,14 @@ def main(args):
     #    stacked = anomalies.stack(allpoints = ['lev', 'lat', 'lon', 'ens'])
     #else:
     #    stacked = anomalies.stack(allpoints = ['lev', 'lat', 'lon'])
-    stacked = anomalies[vari].stack(allpoints = ['lev', 'lat'])
+    stacked = anomalies[vari].stack(allpoints = [lev_name, lat_name])
     #print(anomalies)
     #stacked = anomalies[vari].stack(allpoints = anomalies.dims.keys()[:-1])
 
-    stacked = stacked.reset_coords(drop=True)
-    #print(stacked)
-    #sys.exit()
+    #stacked = stacked.reset_coords(drop=True)
     coefs = stacked.groupby('allpoints').apply(xr_regression)
+    coefs['allpoints'] = stacked.coords['allpoints']
     coefs_unstacked = coefs.unstack('allpoints')
-
     print('output processing')
     cu_ds = coefs_unstacked.to_dataset(dim = 'stat_var')
 
@@ -162,7 +170,24 @@ def main(args):
         fig, ax = plt.subplots(figsize=(12,9))
         my_cmap = mpl.colors.ListedColormap(['yellow', 'red', 'white'])
         coefs_unstacked.sel(stat_var = 'p_values', regs = 'solar').squeeze().plot.contourf(yincrease=False, levels = [0,0.01,0.05], cmap=my_cmap, ax = ax)
-        coefs_unstacked.sel(stat_var = 'coefs', regs = 'solar').squeeze().plot.contour(yincrease=False, colors='k', add_colorbar=False, levels = [-1,-0.5, -0.2,-0.1,0,0.1,0.2, 0.5,1], ax = ax)
+        if vari in ['zmta']:
+            c_levels = [-30,-15,-10,-5,-2,-1,-0.5,-0.25]
+            c_levels += [0]+fce.rev_sign(c_levels)
+            c_levels = np.array(c_levels)
+        elif vari in ['zmua']:
+            c_levels = [-30,-15,-10,-5,-2,-1]
+            c_levels += [0]+fce.rev_sign(c_levels)
+            c_levels = np.array(c_levels)
+        else:
+            c_levels = np.arange(-10,11,1)
+
+        plot_kwargs_zero = dict(yincrease=False, cmap=('k'), linewidths = 6, add_colorbar=False, levels = [0], ax = ax)
+        plot_kwargs = dict(yincrease=False, colors='k', add_colorbar=False, levels = c_levels[c_levels>0], ax = ax, linewidths = 3)
+        coefs_unstacked.sel(stat_var = 'coefs', regs = 'solar').squeeze().plot.contour(**plot_kwargs_zero)
+        coefs_unstacked.sel(stat_var = 'coefs', regs = 'solar').squeeze().plot.contour(**plot_kwargs)
+        plot_kwargs['levels'] = c_levels[c_levels<0]
+        plot_kwargs['linestyles'] = 'dashed'
+        coefs_unstacked.sel(stat_var = 'coefs', regs = 'solar').squeeze().plot.contour(**plot_kwargs)
         ax.set_yscale('log')
         ax.set_ylabel('pressure [hPa')
         ax.set_xlabel('latitude [deg]')

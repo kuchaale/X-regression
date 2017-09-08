@@ -8,6 +8,10 @@ import xarray as xr
 import pandas as pd
 import sys
 
+
+def rev_sign(ls):
+    return map(lambda x: x*-1, ls)[::-1]
+
 def deseasonalize(ds, how = 'absolute'):
     time_var = get_coords_name(ds, 'time')
     climatology = ds.groupby(time_var+'.month').mean(time_var)#.median(time_var) does not work
@@ -88,7 +92,7 @@ def get_coords_name(ds, l_name):
     return [k for k, v in ds.coords.iteritems() if 'standard_name' in v.attrs.keys() and l_name in v.standard_name][0]
 
 def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, filt_years = None):
-    reg_dir = '../regressors/'#os.environ['reg_dir']
+    reg_dir = os.environ['reg_dir']
     print(reg_dir)
     if conf != 'no_qbo':
         qbo1 = open_reg_ccmi(reg_dir+'qbo_'+what_re+what_sp+'_pc1.nc', 'index', norm, i_year, s_year, e_year, filt_years = filt_years)
@@ -223,7 +227,7 @@ def date_range_xr(arr, s_year_data, s_year, e_year, s_mon, e_mon, n, filt_years 
     tr = pd.date_range(start=str(s_year)+'-'+str(s_mon), end = str(e_year)+'-'+str(e_mon), freq=pd.tseries.offsets.DateOffset(months=1))
     if filt_years != None:
         tr = filter(lambda x: x.year not in filt_years, tr)
-    arr = arr.sel(time = pd.to_datetime(tr))
+    arr = arr.sel(time = pd.to_datetime(tr), method='ffill')
     return arr
 
 def normalize(data, norm, down_bound = -1., upper_bound = 1.):

@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 import numpy as np
 import time 
 import supp_functions as fce
@@ -10,12 +12,13 @@ import xarray as xr
 import pandas as pd
 import argparse
 import platform
+import os
 
 pripona_nc = '.nc'
 
 def xr_regression(y):
     X = sm.add_constant(reg, prepend=True) # regressor matrix
-    mod = sm.GLSAR(y.values, X, 0, missing = 'drop') # MLR analysis with AR2 modeling
+    mod = sm.GLSAR(y.values.squeeze(), X, 0, missing = 'drop') # MLR analysis without AR2 modeling
     res = mod.iterative_fit()
 
     return xr.DataArray(res.wresid)
@@ -57,7 +60,7 @@ def main(args):
     in_netcdf = in_dir + in_file_name
     print(in_netcdf)
     ds = xr.open_dataset(in_netcdf)
-    print(ds)
+    #print(ds)
     lat_name = fce.get_coords_name(ds, 'latitude')
     lat = ds.coords[lat_name].values
     nlat = lat.shape[0]
@@ -72,7 +75,8 @@ def main(args):
     
     n = ds.coords['time'].shape[0]
 
-    lon = fce.get_coords(ds, 'longitude')
+    lon_name = fce.get_coords_name(ds, 'longitude')
+    lon = ds.coords[lon_name].values
     nlon = lon.shape[0]
 
     #print nlat, nlev, n, nlon
@@ -84,7 +88,8 @@ def main(args):
         uwnd = ds[vari]
       
     #equatorial average and level selection
-    zm_u = uwnd.sel(lat = slice(10,-10), lev = slice(50,10)).mean(lat_name)
+    sel_dict = {lev_name: slice(50,10), lat_name: slice(-10,10)}
+    zm_u = uwnd.sel(**sel_dict).mean(lat_name)
     #period selection
     times = pd.date_range(str(s_year)+'-01-01', str(e_year)+'-12-31', name='time', freq = 'M')
     zm_u_sel = zm_u.sel(time = times, method='ffill') #nearest
@@ -105,9 +110,9 @@ def main(args):
     global reg#, reg_names, nr
     reg, reg_names, history = fce.configuration_ccmi(what_re, what_sp, norm, 'no_qbo' , i_year, s_year, e_year)
     nr = reg.shape[1]
-
+    #print(anomalies) 
     #extracting of other variability by MLR
-    stacked = anomalies.stack(allpoints = ['lev'])
+    stacked = anomalies.stack(allpoints = [lev_name])
     stacked = stacked.reset_coords(drop=True)
     resids = stacked.groupby('allpoints').apply(xr_regression)
     resids = resids.rename({'dim_0': 'time'})
