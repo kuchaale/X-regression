@@ -91,43 +91,42 @@ def get_coords(ds, l_name):
 def get_coords_name(ds, l_name):
     return [k for k, v in ds.coords.iteritems() if 'standard_name' in v.attrs.keys() and l_name in v.standard_name][0]
 
-def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, filt_years = None):
-    reg_dir = os.environ['reg_dir']
-    print(reg_dir)
-    if conf != 'no_qbo':
-        qbo1 = open_reg_ccmi(reg_dir+'qbo_'+what_re+what_sp+'_pc1.nc', 'index', norm, i_year, s_year, e_year, filt_years = filt_years)
-        qbo2 = open_reg_ccmi(reg_dir+'qbo_'+what_re+what_sp+'_pc2.nc', 'index', norm, i_year, s_year, e_year, filt_years = filt_years)
-    solar = open_reg_ccmi(reg_dir+'solar_1947.nc', 'solar', 0, 1947, s_year, e_year, filt_years = filt_years)
-    n = solar.shape[0]
-    solar /= 126.6 # normalization on Smax - Smin sfu
-    what_re2 = 'HadISST'
-    i_year2 = 1947
-    e_year2 = 2009
-    enso = open_reg_ccmi(reg_dir+'enso_'+what_re2+'_monthly_'+str(i_year2)+'_'+str(e_year2)+'.nc', 'enso', norm, i_year2, s_year, e_year, filt_years = filt_years)
-    if what_re.lower() in ['20CR','era-40','ncep1','m_iau','era_interim_mplev']:#, 'era-i', 'merra', 'merra2', 'jra-55']: #'jra55',
-        saod = open_reg_ccmi(reg_dir+'saod_1960_2013.nc', 'saod', norm, 1960, s_year, e_year, filt_years = filt_years)
-    else:
-        saod = open_reg_ccmi(reg_dir+'sad_gm_50hPa_1949_2013.nc', 'sad', 0, 1949, s_year, e_year, filt_years = filt_years)
-    #if vari in ['O3'] and s_year >= 1979 and conf_str[:7] != '2trends':
-    #eesc = open_reg_ccmi(reg_dir+'eesc.nc', 'eesc', norm, 1979, s_year, e_year, filt_years = filt_years)
-    trend = np.linspace(-1, 1, n)
+def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, reg_dir, filt_years = None):
+    if conf[:5] != 'massi': 
+        print(reg_dir)
+        if conf != 'no_qbo':
+            qbo1 = open_reg_ccmi(reg_dir+'qbo_'+what_re+what_sp+'_pc1.nc', 'index', norm, i_year, s_year, e_year, filt_years = filt_years)
+            qbo2 = open_reg_ccmi(reg_dir+'qbo_'+what_re+what_sp+'_pc2.nc', 'index', norm, i_year, s_year, e_year, filt_years = filt_years)
+        solar = open_reg_ccmi(reg_dir+'solar_1947.nc', 'solar', 0, 1947, s_year, e_year, filt_years = filt_years)
+        n = solar.shape[0]
+        solar /= 126.6 # normalization on Smax - Smin sfu
+        what_re2 = 'HadISST'
+        i_year2 = 1947
+        e_year2 = 2009
+        enso = open_reg_ccmi(reg_dir+'enso_'+what_re2+'_monthly_'+str(i_year2)+'_'+str(e_year2)+'.nc', 'enso', norm, i_year2, s_year, e_year, filt_years = filt_years)
+        if what_re.lower() in ['20CR','era-40','ncep1','m_iau','era_interim_mplev']:#, 'era-i', 'merra', 'merra2', 'jra-55']: #'jra55',
+            saod = open_reg_ccmi(reg_dir+'saod_1960_2013.nc', 'saod', norm, 1960, s_year, e_year, filt_years = filt_years)
+        else:
+            saod = open_reg_ccmi(reg_dir+'sad_gm_50hPa_1949_2013.nc', 'sad', 0, 1949, s_year, e_year, filt_years = filt_years)
+        #if vari in ['O3'] and s_year >= 1979 and conf_str[:7] != '2trends':
+        #eesc = open_reg_ccmi(reg_dir+'eesc.nc', 'eesc', norm, 1979, s_year, e_year, filt_years = filt_years)
+        trend = np.linspace(-1, 1, n)
 
-    #elif vari == 'x':
-    infl_point = 1996
-    year=np.concatenate([[i_year+i]*12 for i in range((n)/12)])
-    part1 =  (year <= infl_point)
-    part2 =  (year >= infl_point)
-        
-    trend1 = np.zeros(n)
-    trend2 = np.zeros(n)
+        #elif vari == 'x':
+        infl_point = 1996
+        year=np.concatenate([[i_year+i]*12 for i in range((n)/12)])
+        part1 =  (year <= infl_point)
+        part2 =  (year >= infl_point)
+            
+        trend1 = np.zeros(n)
+        trend2 = np.zeros(n)
 
-    trend1[part2] = np.linspace(0,1,np.count_nonzero(part2))
-    trend2[part1] = np.linspace(-1,0,np.count_nonzero(part1))
+        trend1[part2] = np.linspace(0,1,np.count_nonzero(part2))
+        trend2[part1] = np.linspace(-1,0,np.count_nonzero(part1))
 
-    volc_i = (year >= s_year) & (year <= e_year)
-    trend1 =  trend1[volc_i]
-    trend2 =  trend2[volc_i]     
-
+        volc_i = (year >= s_year) & (year <= e_year)
+        trend1 =  trend1[volc_i]
+        trend2 =  trend2[volc_i]     
     if conf == 'all_trend':                     
         reg = np.column_stack((trend, solar, enso, saod, qbo1, qbo2)) 
 	my_xticks = ['trend', 'solar', 'enso', 'saod', 'qbo1', 'qbo2']
@@ -178,6 +177,13 @@ def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, fil
 	my_xticks = ['trend', 'solar', 'enso', 'saod']
 	#outdir += '/rel_impact/LIN_REG/'
 	history =  ", ".join(my_xticks)
+    elif conf == 'massi_trend':
+        ds = xr.open_dataset('{}regressors.nc'.format(reg_dir), decode_times = False)
+        n = ds.time.shape[0]
+        trend = np.linspace(-1, 1, n)
+        reg = np.column_stack((trend, ds['solar'].values, ds['enso'].values, ds['saod'].values, ds['qbo50'].values, ds['qbo30'].values))
+        my_xticks = ['trend', 'solar', 'enso', 'saod', 'qbo50', 'qbo30']
+        history =  ", ".join(my_xticks)
     else:
         print('particular configuration does not exist')
         sys.exit()

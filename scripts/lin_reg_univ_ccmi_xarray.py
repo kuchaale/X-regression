@@ -83,10 +83,13 @@ def main(args):
    
 
     if conf_str[-2:] == 'el':
+        conf_str = conf_str[:-3] # reg. conf. is the same for filt. or unfilt. analysis
         filt_years = [1982,1983,1984]
     elif conf_str[-2:] == 'pi':
+        conf_str = conf_str[:-3]
         filt_years = [1991,1992,1993]
     elif conf_str[-2:] == 'bo':
+        conf_str = conf_str[:-3]
         filt_years = [1982,1983,1984,1991,1992,1993]
     else:
         filt_years = None
@@ -95,7 +98,7 @@ def main(args):
     in_netcdf = in_dir + in_file_name 
     #ds = xr.open_mfdataset(in_netcdf, concat_dim = 'ens')
     ds = xr.open_dataset(in_netcdf)
-    
+    #ds = ds.chunk({'plev': 1})
     lat_name = fce.get_coords_name(ds, 'latitude')
     lat = ds.coords[lat_name].values
     nlat = lat.shape[0]
@@ -126,7 +129,7 @@ def main(args):
 
     print("regressors' openning")
     global reg, reg_names, nr
-    reg, reg_names, history = fce.configuration_ccmi(what_re, what_sp, norm, conf_str[:-3], i_year, s_year, e_year, filt_years = filt_years)
+    reg, reg_names, history = fce.configuration_ccmi(what_re, what_sp, norm, conf_str, i_year, s_year, e_year, reg_dir, filt_years = filt_years)
     X = reg[:,:] 
     nr = X.shape[1]
 
@@ -148,6 +151,10 @@ def main(args):
 
     #stacked = stacked.reset_coords(drop=True)
     coefs = stacked.groupby('allpoints').apply(xr_regression)
+    #if monthly:
+    #    coefs = run_regression(stacked)
+
+    #print(coefs)
     coefs['allpoints']  = stacked.coords['allpoints'].sortby(lev_name) # I need to sort allpoints multiindex according to lev, otherwise I would get reversedcoefs   
     coefs_unstacked = coefs.unstack('allpoints')
     print('output processing')
@@ -220,9 +227,11 @@ if __name__ == "__main__":
     parser.add_argument("s_year", help="initial year of analysis", type=int)
     parser.add_argument("e_year", help="end year of analysi", type=int)
     parser.add_argument("in_file_name", help="input filename")
-    choices_def = ['all_trend','all_2trends','all_eesc', 'no_saod_trend', 'no_saod_2trends', 'no_saod_eesc', 'no_saod_enso_trend', 'no_saod_enso_2trends', 'no_saod_enso_eesc']
+    choices_def = ['all_trend','all_2trends','all_eesc', 'no_saod_trend', 'no_saod_2trends', 'no_saod_eesc', 'no_saod_enso_trend', 'no_saod_enso_2trends', 'no_saod_enso_eesc', 'massi_trend']
     choices = choices_def + [i+'_bo' for i in choices_def] + [i+'_pi' for i in choices_def] + [i+'_el' for i in choices_def]
     parser.add_argument("config", help="regression configuration", choices=choices)
+    parser.add_argument("--monthly", dest = 'monthly', action = 'store_true')
+    parser.set_defaults(monthly = False)
     #parser.add_argument("zonal_config", help="Zonal, whole or map?")   
 
 
