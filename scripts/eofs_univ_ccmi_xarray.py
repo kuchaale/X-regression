@@ -111,7 +111,7 @@ def main(args):
 
     print("regressors' openning")
     global reg#, reg_names, nr
-    reg, reg_names, history = fce.configuration_ccmi(what_re, what_sp, norm, 'no_qbo' , i_year, s_year, e_year)
+    reg, reg_names, history = fce.configuration_ccmi(what_re, what_sp, norm, 'no_qbo' , i_year, s_year, e_year, reg_dir)
     nr = reg.shape[1]
     #print(anomalies) 
     #extracting of other variability by MLR
