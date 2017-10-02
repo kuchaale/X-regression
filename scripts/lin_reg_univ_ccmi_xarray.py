@@ -19,7 +19,7 @@ periods=['','_01_jan','_02_feb','_03_mar','_04_apr','_05_may','_06_jun','_07_jul
 bool_str = ['true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh']
 
 def xr_regression(y):
-    X = sm.add_constant(reg, prepend=True) # regressor matrix
+    X = sm.add_constant(reg.values, prepend=True) # regressor matrix
     #nr = reg.shape[1]
     #print(y)
     try:
@@ -130,13 +130,11 @@ def main(args):
     print("regressors' openning")
     global reg, reg_names, nr
     reg, reg_names, history = fce.configuration_ccmi(what_re, what_sp, norm, conf_str, i_year, s_year, e_year, reg_dir, filt_years = filt_years)
-    X = reg[:,:] 
-    nr = X.shape[1]
+    nr = reg.shape[1]
 
     #select date range and variable
     #times = pd.date_range(str(s_year)+'-01-01', str(e_year)+'-12-31', name='time', freq = 'M')
-    ds_sel = fce.date_range_xr(ds, i_year, s_year, e_year, 1, 12, n, filt_years = filt_years)#ds.sel(time = times, method='ffill') #nearest #[vari]
-
+    ds_sel = fce.date_range_xr(ds, i_year, s_year, e_year, 1, 12, n, filt_years = filt_years).isel(lat = slice(None,10))#ds.sel(time = times, method='ffill') #nearest #[vari]
     print('anomalies calculation')
     anomalies, _ = fce.deseasonalize(ds_sel)
     anomalies = anomalies.squeeze().reset_coords(drop=True)
@@ -167,12 +165,11 @@ def main(args):
 
     cod_ds = cod.to_dataset(name = 'cod')
     cod_ds.reset_coords(drop=True, inplace=True)
-    dwt_ds = cod.to_dataset(name = 'dwt')
+    dwt_ds = dwt.to_dataset(name = 'dwt')
     dwt_ds.reset_coords(drop=True, inplace=True)
 
     cu_ds = cu_ds.merge(cod_ds)
     cu_ds = cu_ds.merge(dwt_ds)
-    
     if nc_gen:
         print('netCDF Output')
         cu_ds.coefs.attrs['long_name'] = 'Regression coefficients'
