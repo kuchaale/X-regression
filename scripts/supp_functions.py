@@ -8,6 +8,8 @@ import xarray as xr
 import pandas as pd
 import sys
 
+def str2bool(v):
+    return v.lower() in ['true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh']
 
 def rev_sign(ls):
     return map(lambda x: x*-1, ls)[::-1]
@@ -91,6 +93,19 @@ def get_coords(ds, l_name):
 def get_coords_name(ds, l_name):
     return [k for k, v in ds.coords.iteritems() if 'standard_name' in v.attrs.keys() and l_name in v.standard_name][0]
 
+def get_2trends(n, infl_year, i_year, s_year, e_year):
+    year=np.concatenate([[i_year+i]*12 for i in range((n)/12)])
+    part1 =  (year <= infl_year)
+    part2 =  (year >= infl_year)
+    trend1 = np.zeros(n)                                            
+    trend2 = np.zeros(n)
+    trend1[part2] = np.linspace(0,1,np.count_nonzero(part2))
+    trend2[part1] = np.linspace(-1,0,np.count_nonzero(part1))   
+    volc_i = (year >= s_year) & (year <= e_year)
+    trend1 =  trend1[volc_i]
+    trend2 =  trend2[volc_i]
+    return trend1, trend2
+
 def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, reg_dir, filt_years = None):
     if conf[:5] != 'massi': 
         print(reg_dir)
@@ -109,24 +124,11 @@ def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, reg
         else:
             saod = open_reg_ccmi(reg_dir+'sad_gm_50hPa_1949_2013.nc', 'sad', 0, 1949, s_year, e_year, filt_years = filt_years)
         #if vari in ['O3'] and s_year >= 1979 and conf_str[:7] != '2trends':
-        #eesc = open_reg_ccmi(reg_dir+'eesc.nc', 'eesc', norm, 1979, s_year, e_year, filt_years = filt_years)
+        eesc = open_reg_ccmi(reg_dir+'eesc.nc', 'eesc', norm, 1979, s_year, e_year, filt_years = filt_years)
         trend = np.linspace(-1, 1, n)
 
         #elif vari == 'x':
-        infl_point = 1996
-        year=np.concatenate([[i_year+i]*12 for i in range((n)/12)])
-        part1 =  (year <= infl_point)
-        part2 =  (year >= infl_point)
-            
-        trend1 = np.zeros(n)
-        trend2 = np.zeros(n)
-
-        trend1[part2] = np.linspace(0,1,np.count_nonzero(part2))
-        trend2[part1] = np.linspace(-1,0,np.count_nonzero(part1))
-
-        volc_i = (year >= s_year) & (year <= e_year)
-        trend1 =  trend1[volc_i]
-        trend2 =  trend2[volc_i]     
+        trend1, trend2 =  get_2trends(n, 1996, i_year, s_year, e_year)
     if conf == 'all_trend':                     
         reg = np.column_stack((trend, solar, enso, saod, qbo1, qbo2)) 
 	my_xticks = ['trend', 'solar', 'enso', 'saod', 'qbo1', 'qbo2']
@@ -181,9 +183,38 @@ def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, reg
         ds = xr.open_dataset('{}regressors.nc'.format(reg_dir), decode_times = False)
         n = ds.time.shape[0]
         trend = np.linspace(-1, 1, n)
-        reg = np.column_stack((trend, ds['solar'].values, ds['enso'].values, ds['saod'].values, ds['qbo50'].values, ds['qbo30'].values))
-        my_xticks = ['trend', 'solar', 'enso', 'saod', 'qbo50', 'qbo30']
+        ds['trend'] = xr.Variable(['time'], trend)
+        #ds = normalize_xr(ds, 4)
+        reg = ds.to_array().T
+        #reg = np.column_stack((trend, ds['solar'].values, ds['enso'].values, ds['saod'].values, ds['qbo50'].values, ds['qbo30'].values))
+        my_xticks = list(reg.coords['variable'].values)
         history =  ", ".join(my_xticks)
+
+    elif conf == 'massi_2trends':
+        ds = xr.open_dataset('{}regressors.nc'.format(reg_dir), decode_times = False)
+        n = ds.time.shape[0]
+        trend1, trend2 =  get_2trends(n, 1996, i_year, s_year, e_year) 
+        ds['trend1'] = xr.Variable(['time'], trend1)
+        ds['trend2'] = xr.Variable(['time'], trend2)
+        reg = ds.to_array().T
+        my_xticks = list(reg.coords['variable'].values)
+        history =  ", ".join(my_xticks)
+
+    elif conf == 'massi_eesc':
+        ds = xr.open_dataset('{}regressors.nc'.format(reg_dir), decode_times = False)
+        n = ds.time.shape[0]
+        eesc = open_reg_ccmi(reg_dir+'eesc.nc', 'eesc', norm, 1979, s_year, e_year, filt_years = filt_years)
+        ds['eesc']  = xr.Variable(['time'], eesc)
+        reg = ds.to_array().T
+        my_xticks = list(reg.coords['variable'].values)
+        history =  ", ".join(my_xticks)
+    elif conf == 'massi_notrend':
+        ds = xr.open_dataset('{}regressors.nc'.format(reg_dir), decode_times = False)                                                                   
+        n = ds.time.shape[0]
+        reg = ds.to_array().T                   
+        my_xticks = list(reg.coords['variable'].values)
+        history =  ", ".join(my_xticks)
+
     else:
         print('particular configuration does not exist')
         sys.exit()

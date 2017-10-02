@@ -16,19 +16,17 @@ import matplotlib.pyplot as plt
 
 
 periods=['','_01_jan','_02_feb','_03_mar','_04_apr','_05_may','_06_jun','_07_jul','_08_aug','_09_sep','_10_oct','_11_nov','_12_dec','_win', '_spr', '_sum', '_aut']
-bool_str = ['true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh']
 
-def xr_regression(y):
-    X = sm.add_constant(reg.values, prepend=True) # regressor matrix
-    #nr = reg.shape[1]
-    #print(y)
+def xr_regression(y, **kwargs):
+    X = sm.add_constant(np.array(kwargs['reg']), prepend=True) # regressor matrix
+
     try:
         mod = sm.GLSAR(y.values, X, 2, missing = 'drop') # MLR analysis with AR2 modeling
-        res = mod.iterative_fit() 
-        output = xr.DataArray([res.params[1:], res.pvalues[1:], [sms.durbin_watson(res.wresid)]*nr, [res.rsquared]*nr], coords=[['coefs', 'p_values', 'dwt', 'cod'], reg_names], dims=['stat_var', 'regs'])
+        res = mod.iterative_fit()
+        output = xr.Dataset({'coef': (['reg_name'], res.params[1:]), 'p_value': (['reg_name'],  res.pvalues[1:]), 'DWT': ([''], [sms.durbin_watson(res.wresid)]), 'CoD': ([''], [res.rsquared])}, coords = {'reg_name': (['reg_name'], kwargs['reg_names'])})
     except: 
-        nans = np.full([nr], np.nan)
-        output = xr.DataArray([nans, nans, nans, nans], coords=[['coefs', 'p_values', 'dwt', 'cod'], reg_names], dims=['stat_var', 'regs'])
+        nans = np.full([kwargs['nr']], np.nan)
+        output = xr.Dataset({'coef': (['reg_name'], nans), 'p_value': (['reg_name'],  nans), 'DWT': ([''], [np.nan]), 'CoD': ([''], [np.nan])}, coords = {'reg_name': (['reg_name'], kwargs['reg_names'])})
 
     return output
 
@@ -98,7 +96,7 @@ def main(args):
     in_netcdf = in_dir + in_file_name 
     #ds = xr.open_mfdataset(in_netcdf, concat_dim = 'ens')
     ds = xr.open_dataset(in_netcdf)
-    #ds = ds.chunk({'plev': 1})
+    #ds = ds.chunk({'lat': 10000})
     lat_name = fce.get_coords_name(ds, 'latitude')
     lat = ds.coords[lat_name].values
     nlat = lat.shape[0]
@@ -128,13 +126,12 @@ def main(args):
         ds = ds.mean(lon_name)
 
     print("regressors' openning")
-    global reg, reg_names, nr
+    #global reg, reg_names, nr
     reg, reg_names, history = fce.configuration_ccmi(what_re, what_sp, norm, conf_str, i_year, s_year, e_year, reg_dir, filt_years = filt_years)
     nr = reg.shape[1]
-
     #select date range and variable
     #times = pd.date_range(str(s_year)+'-01-01', str(e_year)+'-12-31', name='time', freq = 'M')
-    ds_sel = fce.date_range_xr(ds, i_year, s_year, e_year, 1, 12, n, filt_years = filt_years).isel(lat = slice(None,10))#ds.sel(time = times, method='ffill') #nearest #[vari]
+    ds_sel = fce.date_range_xr(ds, i_year, s_year, e_year, 1, 12, n, filt_years = filt_years)#.isel(lat = slice(None,10))#ds.sel(time = times, method='ffill') #nearest #[vari]
     print('anomalies calculation')
     anomalies, _ = fce.deseasonalize(ds_sel)
     anomalies = anomalies.squeeze().reset_coords(drop=True)
@@ -144,45 +141,31 @@ def main(args):
     #else:
     #    stacked = anomalies.stack(allpoints = ['lev', 'lat', 'lon'])
     stacked = anomalies[vari].stack(allpoints = [lev_name, lat_name])
-    #print(anomalies)
     #stacked = anomalies[vari].stack(allpoints = anomalies.dims.keys()[:-1])
 
     #stacked = stacked.reset_coords(drop=True)
-    coefs = stacked.groupby('allpoints').apply(xr_regression)
+    reg_kwargs = dict(reg = reg, reg_names = reg_names, nr = nr)
+    coefs = stacked.groupby('allpoints').apply(xr_regression, **reg_kwargs).squeeze()
     #if monthly:
     #    coefs = run_regression(stacked)
 
     #print(coefs)
-    coefs['allpoints']  = stacked.coords['allpoints'].sortby(lev_name) # I need to sort allpoints multiindex according to lev, otherwise I would get reversedcoefs   
-    coefs_unstacked = coefs.unstack('allpoints')
-    print('output processing')
-    cu_ds = coefs_unstacked.to_dataset(dim = 'stat_var')
-
-    cod = cu_ds.cod.isel(regs=[0]).squeeze()
-    dwt = cu_ds.dwt.isel(regs=[0]).squeeze()
-
-    cu_ds = fce.subset_variables(cu_ds, vlist = ['p_values', 'coefs'])
-
-    cod_ds = cod.to_dataset(name = 'cod')
-    cod_ds.reset_coords(drop=True, inplace=True)
-    dwt_ds = dwt.to_dataset(name = 'dwt')
-    dwt_ds.reset_coords(drop=True, inplace=True)
-
-    cu_ds = cu_ds.merge(cod_ds)
-    cu_ds = cu_ds.merge(dwt_ds)
-    if nc_gen:
+    coefs['allpoints']  = stacked.coords['allpoints']#.sortby(lev_name) # I need to sort allpoints multiindex according to lev, otherwise I would get reversedcoefs   
+    cu_ds = coefs.unstack('allpoints')
+    
+    if fce.str2bool(nc_gen):
         print('netCDF Output')
-        cu_ds.coefs.attrs['long_name'] = 'Regression coefficients'
-        cu_ds.cod.attrs['long_name'] = 'Coefficient of determination'
-        cu_ds.p_values.attrs['long_name'] = 'Statistical significance (p-value)'
-        cu_ds.dwt.attrs['long_name'] = 'Durbin-Watson test'
+        cu_ds['coef'].attrs['long_name'] = 'Regression coefficients'
+        cu_ds['CoD'].attrs['long_name'] = 'Coefficient of determination'
+        cu_ds['p_value'].attrs['long_name'] = 'Statistical significance (p-value)'
+        cu_ds['DWT'].attrs['long_name'] = 'Durbin-Watson test'
         #cu_ds.coords[lev_name].attr['units'] = 'hPa'
         cu_ds.attrs['history'] = 'Regressors included: '+history
         cu_ds.attrs['description'] = 'Created ' + time.ctime(time.time()) 
         cu_ds.to_netcdf(out_dir+'stat_outputs'+suffix_nc)
     
 
-    if pdf_gen:
+    if fce.str2bool(pdf_gen):
         print('solar RC visualization')
         fig, ax = plt.subplots(figsize=(12,9))
         my_cmap = mpl.colors.ListedColormap(['yellow', 'red', 'white'])
@@ -224,7 +207,7 @@ if __name__ == "__main__":
     parser.add_argument("s_year", help="initial year of analysis", type=int)
     parser.add_argument("e_year", help="end year of analysi", type=int)
     parser.add_argument("in_file_name", help="input filename")
-    choices_def = ['all_trend','all_2trends','all_eesc', 'no_saod_trend', 'no_saod_2trends', 'no_saod_eesc', 'no_saod_enso_trend', 'no_saod_enso_2trends', 'no_saod_enso_eesc', 'massi_trend']
+    choices_def = ['all_trend','all_2trends','all_eesc', 'no_saod_trend', 'no_saod_2trends', 'no_saod_eesc', 'no_saod_enso_trend', 'no_saod_enso_2trends', 'no_saod_enso_eesc', 'massi_trend', 'massi_2trends', 'massi_notrend', 'massi_eesc']
     choices = choices_def + [i+'_bo' for i in choices_def] + [i+'_pi' for i in choices_def] + [i+'_el' for i in choices_def]
     parser.add_argument("config", help="regression configuration", choices=choices)
     parser.add_argument("--monthly", dest = 'monthly', action = 'store_true')
