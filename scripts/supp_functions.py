@@ -11,6 +11,14 @@ import sys
 def str2bool(v):
     return v.lower() in ['true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh']
 
+def coord_Between(coord, slice_min, slice_max):
+    ind = coord.to_index()
+    if ind.is_monotonic_increasing:
+        out_slice = slice(slice_min, slice_max)
+    else:
+        out_slice = slice(slice_max, slice_min)
+    return out_slice
+
 def rev_sign(ls):
     return map(lambda x: x*-1, ls)[::-1]
 
