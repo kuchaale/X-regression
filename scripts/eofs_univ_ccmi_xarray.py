@@ -91,8 +91,7 @@ def main(args):
         uwnd = ds[vari]
       
     #equatorial average and level selection
-    sel_dict = {lev_name: slice(50,10), lat_name: slice(-10,10)}
-    zm_u = uwnd.sel(**sel_dict).mean(lat_name)
+    sel_dict = {lev_name: fce.coord_Between(lev,10,50), lat_name: fce.coord_Between(lat,-10,10)}    zm_u = uwnd.sel(**sel_dict).mean(lat_name)
     #period selection
     times = pd.date_range(str(s_year)+'-01-01', str(e_year)+'-12-31', name='time', freq = 'M')
     zm_u_sel = zm_u.sel(time = times, method='ffill') #nearest
