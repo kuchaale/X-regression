@@ -102,7 +102,7 @@ def main(args):
     nlat = lat.shape[0]
 
 
-    lev_name = fce.get_coords_name(ds, 'pressure')
+    lev_name = fce.get_coords_name(ds, 'air_pressure')
     if ds.coords[lev_name].attrs['units'] == 'Pa':
         lev =  ds.coords[lev_name].values/100.
         ds[lev_name] = lev    
@@ -150,7 +150,7 @@ def main(args):
     #    coefs = run_regression(stacked)
 
     #print(coefs)
-    coefs['allpoints']  = stacked.coords['allpoints']#.sortby(lev_name) # I need to sort allpoints multiindex according to lev, otherwise I would get reversedcoefs   
+    coefs['allpoints']  = stacked.coords['allpoints'].sortby(lev_name) # I need to sort allpoints multiindex according to lev, otherwise I would get reversedcoefs   
     cu_ds = coefs.unstack('allpoints')
     
     if fce.str2bool(nc_gen):
@@ -169,7 +169,7 @@ def main(args):
         print('solar RC visualization')
         fig, ax = plt.subplots(figsize=(12,9))
         my_cmap = mpl.colors.ListedColormap(['yellow', 'red', 'white'])
-        coefs_unstacked.sel(stat_var = 'p_values', regs = 'solar').squeeze().plot.contourf(yincrease=False, levels = [0,0.01,0.05], cmap=my_cmap, ax = ax)
+        cu_ds['p_value'].sel(reg_name = 'solar').squeeze().plot.contourf(yincrease=False, levels = [0,0.01,0.05], cmap=my_cmap, ax = ax)
         if vari in ['zmta']:
             c_levels = [-30,-15,-10,-5,-2,-1,-0.5,-0.25]
             c_levels += [0]+fce.rev_sign(c_levels)
@@ -183,11 +183,11 @@ def main(args):
 
         plot_kwargs_zero = dict(yincrease=False, cmap=('k'), linewidths = 6, add_colorbar=False, levels = [0], ax = ax)
         plot_kwargs = dict(yincrease=False, colors='k', add_colorbar=False, levels = c_levels[c_levels>0], ax = ax, linewidths = 3)
-        coefs_unstacked.sel(stat_var = 'coefs', regs = 'solar').squeeze().plot.contour(**plot_kwargs_zero)
-        coefs_unstacked.sel(stat_var = 'coefs', regs = 'solar').squeeze().plot.contour(**plot_kwargs)
+        cu_ds['coef'].sel(reg_name = 'solar').squeeze().plot.contour(**plot_kwargs_zero)
+        cu_ds['coef'].sel(reg_name = 'solar').squeeze().plot.contour(**plot_kwargs)
         plot_kwargs['levels'] = c_levels[c_levels<0]
         plot_kwargs['linestyles'] = 'dashed'
-        coefs_unstacked.sel(stat_var = 'coefs', regs = 'solar').squeeze().plot.contour(**plot_kwargs)
+        cu_ds['coef'].sel(reg_name = 'solar').squeeze().plot.contour(**plot_kwargs)
         ax.set_yscale('log')
         ax.set_ylabel('pressure [hPa')
         ax.set_xlabel('latitude [deg]')

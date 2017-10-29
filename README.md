@@ -17,5 +17,8 @@ When all regressors available, attribution by MLR to particular phehomena can be
 ## Possible acknowledgement via Zenodo:
 [![DOI](https://zenodo.org/badge/60927195.svg)](https://zenodo.org/badge/latestdoi/60927195)
 
+## References
+[Kuchar, A., Ball, W. T., Rozanov, E. V., Stenke, A., Revell, L., Miksovsky, J., Pisoft P., Peter, T. (2017). On the aliasing of the solar cycle in the lower stratospheric tropical temperature. Journal of Geophysical Research: Atmospheres. http://doi.org/10.1002/2017JD026948](http://onlinelibrary.wiley.com/doi/10.1002/2017JD026948/abstract)
+
 
 
