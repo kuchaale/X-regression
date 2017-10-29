@@ -131,54 +131,54 @@ def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, reg
         trend1, trend2 =  get_2trends(n, 1996, i_year, s_year, e_year)
     if conf == 'all_trend':                     
         reg = np.column_stack((trend, solar, enso, saod, qbo1, qbo2)) 
-	my_xticks = ['trend', 'solar', 'enso', 'saod', 'qbo1', 'qbo2']
+        my_xticks = ['trend', 'solar', 'enso', 'saod', 'qbo1', 'qbo2']
 	#outdir += '/rel_impact/LIN_REG/'
-	history =  ", ".join(my_xticks)
+        history =  ", ".join(my_xticks)
     elif conf == 'all_2trends':
         reg = np.column_stack((trend1, solar, enso, saod, qbo1, qbo2, trend2)) 
-	my_xticks = ['trend', 'solar', 'enso', 'saod', 'qbo1', 'qbo2', 'trend2']
+        my_xticks = ['trend', 'solar', 'enso', 'saod', 'qbo1', 'qbo2', 'trend2']
 	#outdir += '/rel_impact/LIN_REG/'
-	history =  ", ".join(my_xticks)
+        history =  ", ".join(my_xticks)
     elif conf == 'all_eesc':
         reg = np.column_stack((eesc, solar, enso, saod, qbo1, qbo2)) 
-	my_xticks = ['eesc', 'solar', 'enso', 'saod', 'qbo1', 'qbo2']
+        my_xticks = ['eesc', 'solar', 'enso', 'saod', 'qbo1', 'qbo2']
 	#outdir += '/rel_impact/LIN_REG/'
-	history =  ", ".join(my_xticks)
+        history =  ", ".join(my_xticks)
     elif conf == 'no_saod_trend':
         reg = np.column_stack((trend, solar, enso, qbo1, qbo2)) 
-	my_xticks = ['trend', 'solar', 'enso', 'qbo1', 'qbo2']
+        my_xticks = ['trend', 'solar', 'enso', 'qbo1', 'qbo2']
 	#outdir += '/rel_impact/LIN_REG/'
-	history =  ", ".join(my_xticks)
+        history =  ", ".join(my_xticks)
     elif conf == 'no_saod_2trends':
         reg = np.column_stack((trend1, solar, enso, qbo1, qbo2, trend2)) 
-	my_xticks = ['trend', 'solar', 'enso', 'qbo1', 'qbo2', 'trend2']
+        my_xticks = ['trend', 'solar', 'enso', 'qbo1', 'qbo2', 'trend2']
 	#outdir += '/rel_impact/LIN_REG/'
-	history =  ", ".join(my_xticks)
+        history =  ", ".join(my_xticks)
     elif conf == 'no_saod_eesc':
         reg = np.column_stack((eesc, solar, enso, qbo1, qbo2)) 
-	my_xticks = ['eesc', 'solar', 'enso', 'qbo1', 'qbo2']
+        my_xticks = ['eesc', 'solar', 'enso', 'qbo1', 'qbo2']
 	#outdir += '/rel_impact/LIN_REG/'
-	history =  ", ".join(my_xticks)
+        history =  ", ".join(my_xticks)
     elif conf == 'no_saod_enso_trend':
         reg = np.column_stack((trend, solar, qbo1, qbo2)) 
-	my_xticks = ['trend', 'solar', 'qbo1', 'qbo2']
+        my_xticks = ['trend', 'solar', 'qbo1', 'qbo2']
 	#outdir += '/rel_impact/LIN_REG/'
-	history =  ", ".join(my_xticks)
+        history =  ", ".join(my_xticks)
     elif conf == 'no_saod_enso_2trends':
         reg = np.column_stack((trend1, solar, qbo1, qbo2, trend2)) 
-	my_xticks = ['trend', 'solar', 'qbo1', 'qbo2']
+        my_xticks = ['trend', 'solar', 'qbo1', 'qbo2']
 	#outdir += '/rel_impact/LIN_REG/'
-	history =  ", ".join(my_xticks)
+        history =  ", ".join(my_xticks)
     elif conf == 'no_saod_enso_eesc':
         reg = np.column_stack((eesc, solar, qbo1, qbo2)) 
-	my_xticks = ['eesc', 'solar', 'qbo1', 'qbo2']
+        my_xticks = ['eesc', 'solar', 'qbo1', 'qbo2']
 	#outdir += '/rel_impact/LIN_REG/'
-	history =  ", ".join(my_xticks)
+        history =  ", ".join(my_xticks)
     elif conf == 'no_qbo':                     
         reg = np.column_stack((trend, solar, enso, saod)) 
-	my_xticks = ['trend', 'solar', 'enso', 'saod']
+        my_xticks = ['trend', 'solar', 'enso', 'saod']
 	#outdir += '/rel_impact/LIN_REG/'
-	history =  ", ".join(my_xticks)
+        history =  ", ".join(my_xticks)
     elif conf == 'massi_trend':
         ds = xr.open_dataset('{}regressors.nc'.format(reg_dir), decode_times = False)
         n = ds.time.shape[0]
@@ -294,9 +294,9 @@ def normalize(data, norm, down_bound = -1., upper_bound = 1.):
         data = (((data-dl)*(upper_bound-down_bound))/(dh-dl))+down_bound
         #print data
     elif norm == 6:    
-	data = data-avg
+        data = data-avg
     elif norm == 7:	
-	data = data - runningMeanFast(data,6)
+        data = data - runningMeanFast(data,6)
     return np.array(data)
 
 def normalize_xr(data, norm, down_bound = -1., upper_bound = 1.):
