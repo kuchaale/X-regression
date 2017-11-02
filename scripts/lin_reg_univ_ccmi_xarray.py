@@ -17,18 +17,53 @@ import matplotlib.pyplot as plt
 
 periods=['','_01_jan','_02_feb','_03_mar','_04_apr','_05_may','_06_jun','_07_jul','_08_aug','_09_sep','_10_oct','_11_nov','_12_dec','_win', '_spr', '_sum', '_aut']
 
-def xr_regression(y, **kwargs):
-    X = sm.add_constant(np.array(kwargs['reg']), prepend=True) # regressor matrix
-
+def fit(y, X, reg_names):
+    nr = len(reg_names)
+    
     try:
         mod = sm.GLSAR(y.values, X, 2, missing = 'drop') # MLR analysis with AR2 modeling
         res = mod.iterative_fit()
-        output = xr.Dataset({'coef': (['reg_name'], res.params[1:]), 'p_value': (['reg_name'],  res.pvalues[1:]), 'DWT': ([''], [sms.durbin_watson(res.wresid)]), 'CoD': ([''], [res.rsquared])}, coords = {'reg_name': (['reg_name'], kwargs['reg_names'])})
+        output = xr.Dataset({'coef': (['reg_name'], res.params[1:]), \
+                'conf_int': (['reg_name', 'limit'], res.conf_int()[1:,:]), \
+                'p_value': (['reg_name'],  res.pvalues[1:]), \
+                'DWT': (sms.durbin_watson(res.wresid)), \
+                'CoD': (res.rsquared)}, \
+                coords = {'reg_name': (['reg_name'], reg_names),\
+                          'limit': (['limit'], ['lower', 'upper'])})
     except: 
-        nans = np.full([kwargs['nr']], np.nan)
-        output = xr.Dataset({'coef': (['reg_name'], nans), 'p_value': (['reg_name'],  nans), 'DWT': ([''], [np.nan]), 'CoD': ([''], [np.nan])}, coords = {'reg_name': (['reg_name'], kwargs['reg_names'])})
+        nans = np.full([nr], np.nan)
+        output = xr.Dataset({'coef': (['reg_name'], nans), \
+                'conf_int': (['reg_name', 'limit'], np.array([nans, nans]).T), \
+                'p_value': (['reg_name'],  nans), \
+                'DWT': (np.nan), \
+                'CoD': (np.nan)}, \
+                coords = {'reg_name': (['reg_name'], reg_names),\
+                          'limit': (['limit'], ['lower', 'upper'])})
 
     return output
+
+def xr_regression(y, **kwargs):
+    X = sm.add_constant(np.array(kwargs['reg']), prepend=True) # regressor matrix
+    res_ls = []
+    nr = kwargs['nr']
+    n = y.shape[0]
+    datum = range(1,13)
+    datum *= (n/12)
+    if kwargs['monthly']:
+        n_iter = 13
+    else:
+        n_iter = 1
+
+    for mi in xrange(n_iter):
+        monthi = mi == np.array(datum)
+        if mi == 0:
+            res = fit(y[~monthi], X[~monthi], kwargs['reg_names'])
+        else:
+            res = fit(y[monthi], X[monthi], kwargs['reg_names'])
+        res_ls.append(res)
+    res_da = xr.concat(res_ls, dim = 'month')
+    res_da['month'] = np.arange(0, n_iter)
+    return res_da
 
 def main(args):
     #environmental constants  
@@ -63,7 +98,7 @@ def main(args):
     conf_str = args.config
     suffix_pdf = '_{}-{}_{}.pdf'.format(s_year, e_year, conf_str)
     suffix_nc = '_{}-{}_{}.nc'.format(s_year, e_year, conf_str)
-    
+    monthly = args.monthly
     #zonal_b = args.zonal_config
     
 
@@ -122,6 +157,7 @@ def main(args):
     except:
         nlon = 1
 
+    #currently is tested for zonally averaged files only
     if nlon != 1:
         ds = ds.mean(lon_name)
 
@@ -131,27 +167,27 @@ def main(args):
     nr = reg.shape[1]
     #select date range and variable
     #times = pd.date_range(str(s_year)+'-01-01', str(e_year)+'-12-31', name='time', freq = 'M')
-    ds_sel = fce.date_range_xr(ds, i_year, s_year, e_year, 1, 12, n, filt_years = filt_years)#.isel(lat = slice(None,10))#ds.sel(time = times, method='ffill') #nearest #[vari]
+    ds_sel = fce.date_range_xr(ds, i_year, s_year, e_year, 1, 12, n, filt_years = filt_years)#.sel(lat = slice(-25,25))#ds.sel(time = times, method='ffill') #nearest #[vari]
     print('anomalies calculation')
     anomalies, _ = fce.deseasonalize(ds_sel)
     anomalies = anomalies.squeeze().reset_coords(drop=True)
     print('regression calculation')
-    #if 'ens' in ds.dims.keys():
-    #    stacked = anomalies.stack(allpoints = ['lev', 'lat', 'lon', 'ens'])
-    #else:
-    #    stacked = anomalies.stack(allpoints = ['lev', 'lat', 'lon'])
-    stacked = anomalies[vari].stack(allpoints = [lev_name, lat_name])
-    #stacked = anomalies[vari].stack(allpoints = anomalies.dims.keys()[:-1])
+    filt_dims =  list(filter(lambda x: x not in ['time'], anomalies.dims))[::-1]
+    stacked = anomalies[vari].stack(allpoints = filt_dims)#[lev_name, lat_name])
 
-    #stacked = stacked.reset_coords(drop=True)
-    reg_kwargs = dict(reg = reg, reg_names = reg_names, nr = nr)
-    coefs = stacked.groupby('allpoints').apply(xr_regression, **reg_kwargs).squeeze()
-    #if monthly:
-    #    coefs = run_regression(stacked)
+    reg_kwargs = dict(reg = reg, reg_names = reg_names, nr = nr, monthly = monthly)
+    coefs = stacked.groupby('allpoints').apply(xr_regression, **reg_kwargs)#.squeeze()
 
-    #print(coefs)
-    coefs['allpoints']  = stacked.coords['allpoints'].sortby(lev_name) # I need to sort allpoints multiindex according to lev, otherwise I would get reversedcoefs   
-    cu_ds = coefs.unstack('allpoints')
+    if lev_name in anomalies.dims:
+        coefs['allpoints']  = stacked.coords['allpoints'].sortby(lev_name) # I need to sort allpoints multiindex according to lev, otherwise I would get reversedcoefs   
+    else:
+        coefs['allpoints']  = stacked.coords['allpoints']
+    
+    ndims = len(filt_dims)
+    if ndims != 1:
+        cu_ds = coefs.unstack('allpoints')
+    else:
+        cu_ds = coefs.rename({'allpoints': filt_dims[0]})
     
     if fce.str2bool(nc_gen):
         print('netCDF Output')
@@ -159,17 +195,18 @@ def main(args):
         cu_ds['CoD'].attrs['long_name'] = 'Coefficient of determination'
         cu_ds['p_value'].attrs['long_name'] = 'Statistical significance (p-value)'
         cu_ds['DWT'].attrs['long_name'] = 'Durbin-Watson test'
-        #cu_ds.coords[lev_name].attr['units'] = 'hPa'
+        if  filt_dims in [lev_name]:
+            cu_ds[lev_name].attrs['units'] = 'hPa'
         cu_ds.attrs['history'] = 'Regressors included: '+history
         cu_ds.attrs['description'] = 'Created ' + time.ctime(time.time()) 
         cu_ds.to_netcdf(out_dir+'stat_outputs'+suffix_nc)
     
-
-    if fce.str2bool(pdf_gen):
-        print('solar RC visualization')
-        fig, ax = plt.subplots(figsize=(12,9))
+    if fce.str2bool(pdf_gen) and set(filt_dims) == set([lat_name, lev_name]):
+        print('RC visualization')
         my_cmap = mpl.colors.ListedColormap(['yellow', 'red', 'white'])
-        cu_ds['p_value'].sel(reg_name = 'solar').squeeze().plot.contourf(yincrease=False, levels = [0,0.01,0.05], cmap=my_cmap, ax = ax)
+        fgp = xr.plot.FacetGrid(cu_ds['p_value'], row = 'reg_name', col = 'month', sharey = True, sharex = True)
+        plot_cf_kwargs = dict(yincrease=False, levels = [0,0.01,0.05,1], add_colorbar = False, cmap=my_cmap)
+        fgp.map_dataarray(xr.plot.contourf, lat_name, lev_name, **plot_cf_kwargs) 
         if vari in ['zmta']:
             c_levels = [-30,-15,-10,-5,-2,-1,-0.5,-0.25]
             c_levels += [0]+fce.rev_sign(c_levels)
@@ -181,19 +218,26 @@ def main(args):
         else:
             c_levels = np.arange(-10,11,1)
 
-        plot_kwargs_zero = dict(yincrease=False, cmap=('k'), linewidths = 6, add_colorbar=False, levels = [0], ax = ax)
-        plot_kwargs = dict(yincrease=False, colors='k', add_colorbar=False, levels = c_levels[c_levels>0], ax = ax, linewidths = 3)
-        cu_ds['coef'].sel(reg_name = 'solar').squeeze().plot.contour(**plot_kwargs_zero)
-        cu_ds['coef'].sel(reg_name = 'solar').squeeze().plot.contour(**plot_kwargs)
+        plot_kwargs_zero = dict(yincrease=False, cmap=('k'), linewidths = 6, add_colorbar=False, levels = [0])
+        plot_kwargs = dict(yincrease=False, cmap=('k'), add_colorbar=False, levels = c_levels[c_levels>0], linewidths = 3)
+        fgp.data = cu_ds['coef']
+        fgp.map_dataarray(xr.plot.contour, lat_name, lev_name, **plot_kwargs_zero)
+        
+        fgp.data = cu_ds['coef']
+        fgp.map_dataarray(xr.plot.contour, lat_name, lev_name, **plot_kwargs)
+
         plot_kwargs['levels'] = c_levels[c_levels<0]
         plot_kwargs['linestyles'] = 'dashed'
-        cu_ds['coef'].sel(reg_name = 'solar').squeeze().plot.contour(**plot_kwargs)
-        ax.set_yscale('log')
-        ax.set_ylabel('pressure [hPa')
-        ax.set_xlabel('latitude [deg]')
+        fgp.data = cu_ds['coef']
+        fgp.map_dataarray(xr.plot.contour, lat_name, lev_name, **plot_kwargs)
+
+        ax = fgp.axes[0,0]                                                          
+        #ax.set_ylabel('pressure [hPa')
+        #ax.set_xlabel('latitude [deg]')
         ax.set_ylim(1000,0.1)
+        ax.set_yscale('log')
+
         plt.savefig(out_dir+'visualization'+suffix_pdf, bbox_inches = 'tight')
-        plt.close(fig)
 
 if __name__ == "__main__":
     start = time.time()
@@ -207,11 +251,11 @@ if __name__ == "__main__":
     parser.add_argument("s_year", help="initial year of analysis", type=int)
     parser.add_argument("e_year", help="end year of analysi", type=int)
     parser.add_argument("in_file_name", help="input filename")
-    choices_def = ['all_trend','all_2trends','all_eesc', 'no_saod_trend', 'no_saod_2trends', 'no_saod_eesc', 'no_saod_enso_trend', 'no_saod_enso_2trends', 'no_saod_enso_eesc', 'massi_trend', 'massi_2trends', 'massi_notrend', 'massi_eesc']
+    choices_def = ['all_trend','all_2trends','all_eesc', 'no_saod_trend', 'no_saod_2trends', 'no_saod_eesc', 'no_saod_enso_trend', 'no_saod_enso_2trends', 'no_saod_enso_eesc', 'massi_trend', 'massi_2trends', 'massi_notrend', 'massi_eesc', 'solarAp_trend']
     choices = choices_def + [i+'_bo' for i in choices_def] + [i+'_pi' for i in choices_def] + [i+'_el' for i in choices_def]
     parser.add_argument("config", help="regression configuration", choices=choices)
     parser.add_argument("--monthly", dest = 'monthly', action = 'store_true')
-    parser.set_defaults(monthly = False)
+    #parser.set_defaults(monthly = False)
     #parser.add_argument("zonal_config", help="Zonal, whole or map?")   
 
 

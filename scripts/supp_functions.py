@@ -131,16 +131,22 @@ def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, reg
             saod = open_reg_ccmi(reg_dir+'saod_1960_2013.nc', 'saod', norm, 1960, s_year, e_year, filt_years = filt_years)
         else:
             saod = open_reg_ccmi(reg_dir+'sad_gm_50hPa_1949_2013.nc', 'sad', 0, 1949, s_year, e_year, filt_years = filt_years)
+        Ap = open_reg_ccmi(reg_dir+'Ap_index_1932_2010.nc', 'index', norm, 1932, s_year, e_year, filt_years = filt_years)
         #if vari in ['O3'] and s_year >= 1979 and conf_str[:7] != '2trends':
-        eesc = open_reg_ccmi(reg_dir+'eesc.nc', 'eesc', norm, 1979, s_year, e_year, filt_years = filt_years)
+        #eesc = open_reg_ccmi(reg_dir+'eesc.nc', 'eesc', norm, 1979, s_year, e_year, filt_years = filt_years)
         trend = np.linspace(-1, 1, n)
 
         #elif vari == 'x':
         trend1, trend2 =  get_2trends(n, 1996, i_year, s_year, e_year)
+    print(conf)
     if conf == 'all_trend':                     
         reg = np.column_stack((trend, solar, enso, saod, qbo1, qbo2)) 
         my_xticks = ['trend', 'solar', 'enso', 'saod', 'qbo1', 'qbo2']
 	#outdir += '/rel_impact/LIN_REG/'
+        history =  ", ".join(my_xticks)
+    elif conf == 'solarAp_trend':
+        reg = np.column_stack((trend, solar, enso, saod, qbo1, qbo2, Ap))
+        my_xticks = ['trend', 'solar', 'enso', 'saod', 'qbo1', 'qbo2', 'Ap']
         history =  ", ".join(my_xticks)
     elif conf == 'all_2trends':
         reg = np.column_stack((trend1, solar, enso, saod, qbo1, qbo2, trend2)) 
@@ -224,8 +230,7 @@ def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, reg
         history =  ", ".join(my_xticks)
 
     else:
-        print('particular configuration does not exist')
-        sys.exit()
+        raise ValueError('particular configuration does not exist')
 
     return reg, my_xticks, history
 
@@ -332,6 +337,8 @@ def normalize_xr(data, norm, down_bound = -1., upper_bound = 1.):
     return data	
 
 def open_reg_ccmi(in_file, var, norm, i_year, s_year, e_year, filt_years = None):
+    if s_year < i_year:
+        raise ValueError('{} is lower than data availability from {} for {}'.format(s_year, i_year, in_file))
     ds = xr.open_dataset(in_file, decode_times=False)
     data_xr = normalize_xr(ds[var], norm)
     s_mon = 1

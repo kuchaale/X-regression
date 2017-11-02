@@ -35,7 +35,7 @@ def main(args):
     else:
         n_samples = int(os.environ['n_samples'])
         in_dir = os.environ['in_dir']
-        out_dir = os.environ['out_dir']
+        #out_dir = os.environ['out_dir']
         reg_dir = os.environ['reg_dir']
         pdf_gen = os.environ['pdf_gen']
         nc_gen = os.environ['nc_gen']
@@ -62,22 +62,22 @@ def main(args):
     ds = xr.open_dataset(in_netcdf)
     #print(ds)
     lat_name = fce.get_coords_name(ds, 'latitude')
-    lat = ds.coords[lat_name].values
+    lat = ds.coords[lat_name]
     nlat = lat.shape[0]
 
     lev_name = fce.get_coords_name(ds, 'pressure')
     if ds.coords[lev_name].attrs['units'] == 'Pa':
-        lev =  ds.coords[lev_name].values/100.
+        lev =  ds.coords[lev_name]/100.
         ds[lev_name] = lev    
     else:
-        lev = ds.coords[lev_name].values
+        lev = ds.coords[lev_name]
 
     
     n = ds.coords['time'].shape[0]
     #it may happen that the field is 3D (longitude is missing)
     try:
         lon_name = fce.get_coords_name(ds, 'longitude')
-        lon = ds.coords[lon_name].values
+        lon = ds.coords[lon_name]
         nlon = lon.shape[0]
     except:
         nlon = 1
@@ -91,7 +91,8 @@ def main(args):
         uwnd = ds[vari]
       
     #equatorial average and level selection
-    sel_dict = {lev_name: fce.coord_Between(lev,10,50), lat_name: fce.coord_Between(lat,-10,10)}    zm_u = uwnd.sel(**sel_dict).mean(lat_name)
+    sel_dict = {lev_name: fce.coord_Between(lev,10,50), lat_name: fce.coord_Between(lat,-10,10)}    
+    zm_u = uwnd.sel(**sel_dict).mean(lat_name)
     #period selection
     times = pd.date_range(str(s_year)+'-01-01', str(e_year)+'-12-31', name='time', freq = 'M')
     zm_u_sel = zm_u.sel(time = times, method='ffill') #nearest
@@ -152,7 +153,7 @@ def main(args):
         ax1.set_ylabel('QBO index')
         ax1.set_title('')
         ax1.legend(loc = 'best')
-        plt.savefig(out_dir+'qbo_'+what_re+'_pcas.pdf', bbox_inches='tight')
+        plt.savefig(reg_dir+'qbo_'+what_re+'_pcas.pdf', bbox_inches='tight')
         plt.close(fig)    
                 
     if nc_gen:
@@ -160,7 +161,7 @@ def main(args):
         #print(pcs[:,0])
         for i in xrange(npca):
             pcs_ds = pcs[:,i].to_dataset(name = 'index')
-            pcs_ds.to_netcdf(out_dir+'qbo_'+what_re+'_pc'+str(i+1)+pripona_nc)       
+            pcs_ds.to_netcdf(reg_dir+r'qbo_'+what_re+'_pc'+str(i+1)+pripona_nc)       
 
 if __name__ == "__main__":
     #inputs
