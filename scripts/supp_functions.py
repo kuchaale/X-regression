@@ -86,23 +86,23 @@ def my_function(y, X):
     return linreg(y, X)[0]
 
 def get_var(ds, l_name):
-    c_name = [k for k, v in ds.data_vars.iteritems() if 'long_name' in v.attrs.keys() and l_name in v.long_name][0]
+    c_name = [k for k, v in ds.data_vars.items() if 'long_name' in v.attrs.keys() and l_name in v.long_name][0]
     return ds.data_vars[c_name].values
 def get_var_name(ds, l_name):
-    return [k for k, v in ds.data_vars.iteritems() if 'long_name' in v.attrs.keys() and l_name in v.long_name][0]
+    return [k for k, v in ds.data_vars.items() if 'long_name' in v.attrs.keys() and l_name in v.long_name][0]
 
 def get_coords(ds, l_name):
-    c_name = [k for k, v in ds.coords.iteritems() if 'long_name' in v.attrs.keys() and l_name in v.long_name][0]
+    c_name = [k for k, v in ds.coords.items() if 'long_name' in v.attrs.keys() and l_name in v.long_name][0]
     #if l_name == 'pressure' and ds.coords[c_name].attrs['units'] == 'Pa':
     #    return ds.coords[c_name].values/100.
     #else:
     return ds.coords[c_name].values
 
 def get_coords_name(ds, l_name):
-    return [k for k, v in ds.coords.iteritems() if 'standard_name' in v.attrs.keys() and l_name in v.standard_name][0]
+    return [k for k, v in ds.coords.items() if 'standard_name' in v.attrs.keys() and l_name in v.standard_name][0]
 
 def get_2trends(n, infl_year, i_year, s_year, e_year):
-    year=np.concatenate([[i_year+i]*12 for i in range((n)/12)])
+    year=np.concatenate([[i_year+i]*12 for i in range((n)//12)])
     part1 =  (year <= infl_year)
     part2 =  (year >= infl_year)
     trend1 = np.zeros(n)                                            
@@ -131,7 +131,7 @@ def configuration_ccmi(what_re, what_sp, norm, conf, i_year, s_year, e_year, reg
             saod = open_reg_ccmi(reg_dir+'saod_1960_2013.nc', 'saod', norm, 1960, s_year, e_year, filt_years = filt_years)
         else:
             saod = open_reg_ccmi(reg_dir+'sad_gm_50hPa_1949_2013.nc', 'sad', 0, 1949, s_year, e_year, filt_years = filt_years)
-        Ap = open_reg_ccmi(reg_dir+'Ap_index_1932_2010.nc', 'index', norm, 1932, s_year, e_year, filt_years = filt_years)
+        #Ap = open_reg_ccmi(reg_dir+'Ap_index_1932_2010.nc', 'index', norm, 1932, s_year, e_year, filt_years = filt_years)
         #if vari in ['O3'] and s_year >= 1979 and conf_str[:7] != '2trends':
         #eesc = open_reg_ccmi(reg_dir+'eesc.nc', 'eesc', norm, 1979, s_year, e_year, filt_years = filt_years)
         trend = np.linspace(-1, 1, n)

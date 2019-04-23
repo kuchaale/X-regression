@@ -127,7 +127,7 @@ def main(args):
     #coslat = np.cos(np.deg2rad(lat)).clip(0.,1.)
     #wgts = np.sqrt(coslat)[np.newaxis,...]   
 
-    for i in xrange(npca):		
+    for i in range(npca):		
             var_eofs = solver.varianceFraction(neigs=i)
             #print var_eofs
             if np.sum(var_eofs) > 0.95:
@@ -159,7 +159,7 @@ def main(args):
     if nc_gen:
         #save to netcdf
         #print(pcs[:,0])
-        for i in xrange(npca):
+        for i in range(npca):
             pcs_ds = pcs[:,i].to_dataset(name = 'index')
             pcs_ds.to_netcdf(reg_dir+r'qbo_'+what_re+'_pc'+str(i+1)+pripona_nc)       
 
