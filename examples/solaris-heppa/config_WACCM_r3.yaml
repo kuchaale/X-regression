@@ -9,6 +9,7 @@ analysis:
     e_year: 2090
     type: [annually,monthly]
     reg_config: SH_regressors
+    rho: 2
 output_config:
     folder: /mnt/2data/solarisheppa/outputs/
 SH_regressors:

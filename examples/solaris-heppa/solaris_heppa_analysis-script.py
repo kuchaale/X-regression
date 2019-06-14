@@ -37,13 +37,13 @@ os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 #dask.config.set(scheduler='threads') 
 
 # +
-def _fit_ufunc(y, X):   
+def _fit_ufunc(y, X, rho = 2):   
     X = X.T
     #print(X.shape)
     #sys.exit()
     nr = X.shape[1]-1
     try:
-        mod = sm.GLSAR(y, X, 2, missing = 'drop') # MLR analysis with AR2 modeling
+        mod = sm.GLSAR(y, X, rho, missing = 'drop') # MLR analysis with AR2 modeling
         res = mod.iterative_fit()
         out = np.array((res.params[1:], res.pvalues[1:], \
                         [sms.durbin_watson(res.wresid)]*nr, 
@@ -61,7 +61,9 @@ def deseasonalize(da, var, sel_period = dict(time = slice('1960', '1990'))):
         anomalies = da.groupby('time.month') - climatology
     return anomalies, climatology
 
-def process_out(ds, names, units):
+dictfilt = lambda x, y: dict([ (i,x[i]) for i in x if i in set(y) ])
+
+def process_out(ds, names, units, config):
     ds['reg'] = names
     ds['var'] = ['coefs', 'p_values', 'DWT', 'CoD']
     ds = ds.to_dataset(dim = 'var')
@@ -74,7 +76,9 @@ def process_out(ds, names, units):
     ds['p_values'].attrs['long_name'] = 'Statistical significance (p-value)'
     
     now = datetime.datetime.utcnow()
-    ds.attrs['description'] = 'Created ' + now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    ds.attrs['description'] = 'Created ' + now.strftime("%Y-%m-%dT%H:%M:%SZ")    
+    ds.attrs['config'] = yaml.dump(dictfilt(config, ('analysis',config['analysis']['reg_config'])))
+    
     return ds
     
 def process_in(da, var, sel_time_dict):
@@ -121,19 +125,19 @@ def normalize(da, norm_type, norm_const = None):
     
     return xr.apply_ufunc(_lambda_ufunc, da)#, input_core_dims=[['time']])
 
-def regression(y, X, reg_names, units):
+def regression(y, X, reg_names, units, config):
     nr = len(reg_names)
     ds_out = xr.apply_ufunc(_fit_ufunc, y, X, \
         input_core_dims = [['time'],['variable','time']], \
         output_core_dims=[['var','reg']], dask='allowed', \
         output_dtypes=[np.float], vectorize = True, \
-        output_sizes = dict(var = 4, reg = nr))
+        output_sizes = dict(var = 4, reg = nr), \
+        kwargs = dict(rho = config['analysis']['rho']))
 
     #output processing
-    ds_out = process_out(ds_out, reg_names[::-1], units)   
+    ds_out = process_out(ds_out, reg_names[::-1], units, config)   
     return ds_out
     
-
 
 
 # + {"code_folding": []}
@@ -183,7 +187,7 @@ def main():
                         else:
                             print(f'None of this signal option is available')
                         # regression analysis
-                        ds_out = dask.delayed(regression)(y, X, reg_names, units)
+                        ds_out = dask.delayed(regression)(y, X, reg_names, units, config)
                         outfile = Path(config['output_config']['folder']) / f'{var}_{analysis_type}_{model}_{sim}_{ens}_{s_year}-{e_year}_results.nc'
                         delayed_obj = ds_out.to_netcdf(outfile, compute = False)
                         delayed_results.append(delayed_obj)
