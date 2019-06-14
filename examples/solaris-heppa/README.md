@@ -1,5 +1,5 @@
 # Scripts intended for SOLARIS-HEPPA regression experiments
-## Required package installation
+## Required package installation (for Unix and python3 users)
 `python3 -m pip install -r requirements.txt`
 
 ## Usage
