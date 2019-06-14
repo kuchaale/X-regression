@@ -25,7 +25,6 @@ import xarray as xr
 import statsmodels.api as sm
 import statsmodels.stats.stattools as sms
 import numpy as np
-import matplotlib.pyplot as plt
 import sys
 import pandas as pd
 import datetime
