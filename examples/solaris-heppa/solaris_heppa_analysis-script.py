@@ -191,7 +191,7 @@ def main():
                         # regression analysis
                         ds_out = dask.delayed(regression)(y, X, reg_names, units, config)
                         outfile = Path(config['output_config']['folder']) / f'{var}_{analysis_type}_{model}_{sim}_{ens}_{s_year}-{e_year}_results.nc'
-                        delayed_obj = ds_out.to_netcdf(outfile, compute = False, engine = 'scipy')
+                        delayed_obj = ds_out.to_netcdf(outfile, compute = False)
                         delayed_results.append(delayed_obj)
 
     with ProgressBar():
