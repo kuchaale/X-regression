@@ -107,6 +107,8 @@ def load_regressors(config, sel_time_dict):
     return reg_all, reg_name_ls
 
 def normalize(da, norm_type, norm_const = None):
+    name = da.name
+
     if norm_type == 'standardize':
         _lambda_ufunc = lambda x: (x - x.mean()) / x.std()
     elif norm_type == 'remove_mean':
@@ -120,7 +122,7 @@ def normalize(da, norm_type, norm_const = None):
     elif norm_type == None:
         _lambda_ufunc = lambda x: x
     else:
-        print(f'This {norm_type} is not available')       
+        print(f'This {norm_type} is not available for {name}')       
         
     
     return xr.apply_ufunc(_lambda_ufunc, da)#, input_core_dims=[['time']])
@@ -167,7 +169,7 @@ def main():
                 for ens in input_config['ens']:
                     # data opening
                     infile = list(root_path.glob(f'{var}_monthly_{model}_{sim}_{ens}_*.nc'))[0]
-                    da_in = xr.open_dataset(infile)[var].squeeze().chunk()
+                    da_in = xr.open_dataset(infile)[var].squeeze(drop = True)#.chunk()
                     units = da_in.attrs['units']
                     da_in, da_in_time, da_in_month = process_in(da_in, var, sel_time_dict)
 
