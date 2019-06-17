@@ -4,3 +4,5 @@ pandas==0.24.2
 dask==1.2.2
 numpy==1.16.4
 PyYAML==5.1.1
+scipy==0.18
+patsy==0.5.1
