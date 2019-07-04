@@ -6,6 +6,6 @@ To install `scipy` required for `statsmodels` you need to install [BLAS](https:/
 
 ## Usage
 ### To generate configuration yaml file and run the regression script:
-`bash generate_config_refC2.sh 2011 2099 zmta,zmua refC2` runs for for the historical (1960-2010) period, zonal-mean temperature and zonal wind from refC2 simulations
+`bash generate_config_refC2.sh 1960 2010 zmta,zmua refC2` runs for for the historical (1960-2010) period, zonal-mean temperature and zonal wind from refC2 simulations
 ### To run solely the regression script with pregenerated configuration file:
 `python3 solaris_heppa_analysis-script.py config_SOCOL3r1i1p1_zmta,zmua_1960-2010.yaml` runs for for the historical (1960-2010) period, zonal-mean temperature and zonal wind from SOCOL3 refC2 simulation
