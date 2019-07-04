@@ -29,11 +29,11 @@ SH_regressors:
         filename: {{reg_folder}}/solar_proxies_for_refc2_solaris_heppa.nc
         norm_type: null
         norm_const: null
-    eep_for_noy_and_o3:
+    {{epp_reg}}:
         filename: {{reg_folder}}solar_proxies_for_refc2_solaris_heppa.nc
         norm_type: null
         norm_const: null
-    spe_for_noy_and_o3:
+    {{spe_reg}}:
         filename: {{reg_folder}}solar_proxies_for_refc2_solaris_heppa.nc
         norm_type: null
         norm_const: null
