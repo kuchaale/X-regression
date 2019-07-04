@@ -1,0 +1,51 @@
+input_config: 
+    var: [{{variable}}]
+    folder: /mnt/2data/solarisheppa/
+    simulation: [{{sim}}]
+    model: [{{model}}]
+    ens: [{{ens}}]
+analysis:
+    s_year: {{s_year}}
+    e_year: {{e_year}}
+    type: [annually,monthly]
+    reg_config: SH_regressors
+    rho: 2
+output_config:
+    folder: {{output_folder}}
+SH_regressors:
+    QBO50: 
+        filename: {{reg_folder}}internal_proxies_for_{{sim}}_{{model}}_{{ens}}.nc
+        norm_type: std_scaling
+        norm_const: null
+    QBO30:
+        filename: {{reg_folder}}internal_proxies_for_{{sim}}_{{model}}_{{ens}}.nc
+        norm_type: std_scaling
+        norm_const: null
+    ENSO:
+        filename: {{reg_folder}}internal_proxies_for_{{sim}}_{{model}}_{{ens}}.nc
+        norm_type: std_scaling
+        norm_const: null
+    f107:
+        filename: {{reg_folder}}/solar_proxies_for_refc2_solaris_heppa.nc
+        norm_type: null
+        norm_const: null
+    eep_for_noy_and_o3:
+        filename: {{reg_folder}}solar_proxies_for_refc2_solaris_heppa.nc
+        norm_type: null
+        norm_const: null
+    spe_for_noy_and_o3:
+        filename: {{reg_folder}}solar_proxies_for_refc2_solaris_heppa.nc
+        norm_type: null
+        norm_const: null
+    CO2EQ:
+        filename: {{reg_folder}}anthropogenic_proxies_for_refc2.nc
+        norm_type: null
+        norm_const: null
+    EESC:
+        filename: {{reg_folder}}anthropogenic_proxies_for_refc2.nc
+        norm_type: null
+        norm_const: null
+
+
+
+    
