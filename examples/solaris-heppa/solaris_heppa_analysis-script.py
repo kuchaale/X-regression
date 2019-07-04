@@ -1,22 +1,11 @@
-# ---
-# jupyter:
-#   jupytext:
-#     formats: ipynb,py:light
-#     text_representation:
-#       extension: .py
-#       format_name: light
-#       format_version: '1.3'
-#       jupytext_version: 1.0.2
-#   kernelspec:
-#     display_name: Python 3
-#     language: python
-#     name: python3
-# ---
+#!/usr/bin/env python
+# coding: utf-8
 
-# + {"toc": true, "cell_type": "markdown"}
 # <h1>Table of Contents<span class="tocSkip"></span></h1>
 # <div class="toc"><ul class="toc-item"></ul></div>
-# -
+
+# In[ ]:
+
 
 import yaml
 from pathlib import Path
@@ -36,17 +25,19 @@ os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 #dask.config.set(scheduler='processes')
 #dask.config.set(scheduler='threads') 
 
-# +
+
+# In[ ]:
+
+
 def _fit_ufunc(y, X, rho = 2):   
     X = X.T
     #print(X.shape)
     #sys.exit()
-    nr = X.shape[1]-1
+    nr = X.shape[1]
     try:
         mod = sm.GLSAR(y, X, rho, missing = 'drop') # MLR analysis with AR2 modeling
         res = mod.iterative_fit()
-        out = np.array((res.params[1:], res.pvalues[1:], \
-                        [sms.durbin_watson(res.wresid)]*nr, 
+        out = np.array((res.params[:], res.pvalues[:],                         [sms.durbin_watson(res.wresid)]*nr, 
                         [res.rsquared]*nr))
     except:
         out = np.full((4,nr), np.nan)
@@ -63,8 +54,7 @@ def deseasonalize(da, var, sel_period = dict(time = slice('1960', '1990'))):
 
 dictfilt = lambda x, y: dict([ (i,x[i]) for i in x if i in set(y) ])
 
-def process_out(ds, names, units, config):
-    ds['reg'] = names
+def process_out(ds, units, config):
     ds['var'] = ['coefs', 'p_values', 'DWT', 'CoD']
     ds = ds.to_dataset(dim = 'var')
     
@@ -80,10 +70,27 @@ def process_out(ds, names, units, config):
     ds.attrs['config'] = yaml.dump(dictfilt(config, ('analysis',config['analysis']['reg_config'])))
     
     return ds
+
+def check_vert_coord(da):
+    vert_coord_name = get_coords_name(da, 'air_pressure')
+    if vert_coord_name:
+        plev_units = da[vert_coord_name].attrs['units']
+    else:
+        plev_units = None
     
-def process_in(da, var, sel_time_dict):
-    da = da.sel(**sel_time_dict)
+    return vert_coord_name, plev_units
+    
+    
+def process_in(da, var, sel_time_dict):   
+    vert_coord_name, plev_units = check_vert_coord(da)
+  
+    if plev_units == 'Pa':
+        da[vert_coord_name] = da[vert_coord_name]/100.
+        da[vert_coord_name].attrs['units'] = 'hPa'
+    
     anomalies, _  = deseasonalize(da, var)
+    anomalies = anomalies.sel(**sel_time_dict)
+
     return anomalies, anomalies['time'], anomalies['month']
 
 def load_regressors(config, sel_time_dict):
@@ -99,16 +106,21 @@ def load_regressors(config, sel_time_dict):
         #print(reg_name)
 
     reg_all = xr.merge(reg_ls).sel(**sel_time_dict)
+    vert_coord_name, plev_untis = check_vert_coord(reg_all)
     
-    reg_all['ones'] = (('time'), np.ones(reg_all['time'].shape[0]))
+    if vert_coord_name:
+        reg_all[vert_coord_name] = reg_all[vert_coord_name].round(3) # to match pressure levels between y and X
+
+    
+    reg_all['intercept'] = (('time'), np.ones(reg_all['time'].shape[0]))
     reg_all = reg_all.to_array()#.T
-    reg_all = reg_all.sel(variable = reg_all.coords['variable'].values[::-1])
+    reg_all = reg_all.rename({'variable': 'reg'})
+    reg_all = reg_all.sel(reg = reg_all.coords['reg'].values[::-1])
     
-    return reg_all, reg_name_ls
+    return reg_all, reg_all['reg'].values
 
 def normalize(da, norm_type, norm_const = None):
     name = da.name
-
     if norm_type == 'standardize':
         _lambda_ufunc = lambda x: (x - x.mean()) / x.std()
     elif norm_type == 'remove_mean':
@@ -129,20 +141,23 @@ def normalize(da, norm_type, norm_const = None):
 
 def regression(y, X, reg_names, units, config):
     nr = len(reg_names)
-    ds_out = xr.apply_ufunc(_fit_ufunc, y, X, \
-        input_core_dims = [['time'],['variable','time']], \
-        output_core_dims=[['var','reg']], dask='allowed', \
-        output_dtypes=[np.float], vectorize = True, \
-        output_sizes = dict(var = 4, reg = nr), \
-        kwargs = dict(rho = config['analysis']['rho']))
-
-    #output processing
-    ds_out = process_out(ds_out, reg_names[::-1], units, config)   
-    return ds_out
+    ds_out = xr.apply_ufunc(_fit_ufunc, y, X,         input_core_dims = [['time'],['reg','time']],         output_core_dims=[['var','reg']], dask='allowed',         output_dtypes=[np.float], vectorize = True,         output_sizes = dict(var = 4, reg = nr),         kwargs = dict(rho = config['analysis']['rho']))
     
+    #output processing
+    ds_out = process_out(ds_out, units, config)   
+    return ds_out
+
+def get_coords_name(ds, l_name):
+    coords_name_ls = [k for k, v in ds.coords.items() if ('standard_name' in v.attrs.keys()) and (l_name in v.standard_name)]
+    if not coords_name_ls:
+        return None
+    else:
+        return coords_name_ls[0]
 
 
-# + {"code_folding": []}
+# In[ ]:
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("config", default="config.yaml", help="Config yaml file")
@@ -169,6 +184,7 @@ def main():
                 for ens in input_config['ens']:
                     # data opening
                     infile = list(root_path.glob(f'{var}_monthly_{model}_{sim}_{ens}_*.nc'))[0]
+                    print(infile)
                     da_in = xr.open_dataset(infile)[var].squeeze(drop = True)#.chunk()
                     units = da_in.attrs['units']
                     da_in, da_in_time, da_in_month = process_in(da_in, var, sel_time_dict)
@@ -199,3 +215,4 @@ def main():
     
 if __name__ == "__main__":
     main()
+
