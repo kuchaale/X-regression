@@ -18,6 +18,7 @@ then
 	spe_reg=spe_for_o3_and_noy
 else
 	echo "none of these options: "${variable}" is valid"
+	exit
 fi
 
 
