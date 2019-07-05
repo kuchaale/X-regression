@@ -7,7 +7,7 @@ To install `scipy` required for `statsmodels` you need to install [BLAS](https:/
 ## Required package installation using conda
 The easiest way to get everything installed is to use [conda](https://conda.io/en/latest/). 
 
-`conda env create --file py36-env.txt`
+`conda env create --name py36 --file py36-env.txt`
 
 `source activate py36`
 
