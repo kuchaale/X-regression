@@ -1,8 +1,13 @@
 # Scripts intended for SOLARIS-HEPPA regression experiments
-## Required package installation (for Unix and python3.6 users)
+## Required package installation using pip (for Unix and python3.6 users)
 `python3 -m pip install -r requirements.txt`
 
 To install `scipy` required for `statsmodels` you need to install [BLAS](https://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms) and [LAPACK](https://en.wikipedia.org/wiki/LAPACK) (see [here](https://stackoverflow.com/questions/33368261/what-is-the-easiest-way-to-install-blas-and-lapack-for-scipy/33369271)).
+
+## Required package installation using conda
+The easiest way to get everything installed is to use [conda](https://conda.io/en/latest/). 
+`conda env create --file py36-env.txt`
+`source activate py36`
 
 ## Usage
 ### To generate configuration yaml file and run the regression script:
